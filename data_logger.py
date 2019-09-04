@@ -1,85 +1,127 @@
-#!/home/pi/projects/rpi-projects/venv/bin/python3
+#!/home/pi/projects/rpi-projects/venv/bin/python
 # coding=utf-8
 
+import time
+import datetime
+import os
+import traceback
+import subprocess
+import argparse
+import csv
+import shutil
+import bme280
+import smbus2
 import ADC0832
-import Adafruit_DHT
-import time, datetime, os, traceback, subprocess
 
 FILE_FOLDER = os.path.join(os.sep, 'home', 'pi', 'log')
 RESULT_FILE = 'results.csv'
 LOG_FILE = 'data_logger.log'
-start_time = time.time()
+
+ap = argparse.ArgumentParser()
+ap.add_argument("-v", "--verbosity", type=int, choices=[0,1,2], default=0,
+                help="increase output verbosity")
+VERBOSITY = ap.parse_args().verbosity
 
 def log(logstring):
-    with open(os.path.join(FILE_FOLDER, LOG_FILE), 'a+') as logfile:
-        curr_time = datetime.datetime.now().strftime('%d.%m.%Y %H:%M:%S')
-        logfile.write(curr_time + ":   " + str(logstring))
+    ''' Loggin utility:
+        0: only print to console
+        1: only print to logfile
+        2: print to both console and logfile
+    '''
+    if VERBOSITY == 0:
+        print("[LOG] " + logstring)
+    elif VERBOSITY == 1:
+        with open(os.path.join(FILE_FOLDER, LOG_FILE), 'a+') as logfile:
+            curr_time = datetime.datetime.now().strftime('%d.%m.%Y %H:%M:%S')
+            logfile.write(curr_time + ":   " + str(logstring) + "\n")
+    elif VERBOSITY == 2:
+        print("[LOG] " + logstring)
+        with open(os.path.join(FILE_FOLDER, LOG_FILE), 'a+') as logfile:
+            curr_time = datetime.datetime.now().strftime('%d.%m.%Y %H:%M:%S')
+            logfile.write(curr_time + ":   " + str(logstring) + "\n")
 
 def init():
-    log('Script started')
+    log("Script started")
+
     # Setup the photoresistor
     ADC0832.setup()
-    # setup current week
-    date = datetime.datetime.now()
-    CURR_WEEK=date.isocalendar()[1]
-    # 
-    weekly_res_file(CURR_WEEK)
-    return CURR_WEEK
 
-def check_res_file():
-    num_res_files = len([name for name in os.listdir('.') if os.path.isfile(name) and RESULT_FILE[:-5] in name])
-    
-    if num_res_files > 0:
-        size_curr_res_file = os.stat(RESULT_FILE).st_size
+    if not os.path.exists(os.path.join(FILE_FOLDER, RESULT_FILE)):
+        with open(os.path.join(FILE_FOLDER, RESULT_FILE), 'w') as logfile:
+            logfile.write("date,time,temperature,humidity,brighness\n")
 
-        if size_curr_res_file > 1024*1024*100:
-            new_res_file = RESULT_FILE[:-4] + str(num_res_files+1) + RESULT_FILE[-4:]
-            log("Logfile too big; renaming to: '%s'" % new_res_file)
-            os.rename(RESULT_FILE, new_res_file)
+    # get week of last result in results.csv
+    with open(os.path.join(FILE_FOLDER, RESULT_FILE), 'r') as file:
+        for row in reversed(list(csv.reader(file))):
+            if row:
+                if "date" in row:
+                    week=0
+                else:
+                    date=datetime.datetime.strptime(row[0] + ' ' + row[1], '%d-%m-%Y %H:%M:%S')
+                    week = date.isocalendar()[1]
+                    break 
+    return week
 
-def weekly_res_file(CURR_WEEK):
+def weekly_res_file(old_week):
+    ''' If a new week has been detected, save current results.csv as week-xx-results.csv
+        and begin with a new clean results.csv for the new week 
+    '''
     date = datetime.datetime.now()
     week = date.isocalendar()[1]
-    if week > CURR_WEEK or week < CURR_WEEK:
-        print("Change Week")
-        res_save_name = "week-" + str(week) + "-results.csv"
-        retVal = subprocess.call(["cp", os.path.join(FILE_FOLDER, RESULT_FILE), res_save_name])
-        with open(os.path.join(FILE_FOLDER, LOG_FILE), 'a+') as logfile:
-            subprocess.call(["echo", "date,time,temperature,humidity,brighness"], stdout=logfile)
+
+    if week > old_week or week < old_week:
+        log("Week has changed. Old Week: {}. New Week: {}".format(old_week, week))
+        res_save_name = "week-" + str(old_week) + "-results.csv"
+        shutil.copy2(os.path.join(FILE_FOLDER, RESULT_FILE), os.path.join(FILE_FOLDER, res_save_name))
+
+        with open(os.path.join(FILE_FOLDER, RESULT_FILE), 'w') as resfile:
+            resfile.write("date,time,temperature,humidity,brighness\n")
         return week
     else:
-        return CURR_WEEK
+        return old_week
 
 def write_to_file(res_string):
+    ''' Write results to RESULTS_FILE '''
     with open(os.path.join(FILE_FOLDER, RESULT_FILE), 'a+') as file:
         file.write(res_string)
 
 def main():
-    CURR_WEEK=init()
+    ''' Read the sensor-data (temp/humidity/brightness) every 60s
+        Write the data into a results file
+        Results files hold the data of one week
+    '''
+    bme_port = 1
+    bme_address = 0x76
+    bus = smbus2.SMBus(bme_port)
+    current_week=init()
+    start_time = time.time()
     while True:
-        # read dht11
-        humidity, temperature = Adafruit_DHT.read_retry(11, 17)
 
-        # read photoresistor
+        # if a new week has begun, backup last week and begin with a clean res file
+        current_week = weekly_res_file(current_week)
+
+        # get data from sensors
+        data = bme280.sample(bus, bme_address)
         light = ADC0832.getResult()
-            
+        
+        # get the current date for logging
         curr_datetime = datetime.datetime.now()
         curr_date = curr_datetime.strftime('%d-%m-%Y')
         curr_time = curr_datetime.strftime('%H:%M:%S')
-        write_to_file("%s,%s,%d,%d,%d\n" % (curr_date,curr_time,temperature, humidity, light))
 
-        CURR_WEEK = weekly_res_file(CURR_WEEK)
-        time.sleep(60.0 - ((time.time() - start_time) % 60.0))
+        write_to_file("%s,%s,%4f,%4f,%d\n" % (curr_date,curr_time,data.temperature, data.humidity, light))
+
+        # get exactly one reading all 60s
+        now_time = time.time()
+        time.sleep(60.0 - ((now_time - start_time) % 60.0))
 
 if __name__ == '__main__':
-
     try:
         main()
     except KeyboardInterrupt:
-        ADC0832.destroy()
-        log("Finished")
-        print('Finished')
+        log("Script Exit: KeyboardInterrupt")
     except Exception as e:
-        log("Error: " + str(e))
+        log("Script Exit: " + str(e))
         log(traceback.format_exc())
-        print(traceback.format_exc())
+    finally:
+        ADC0832.destroy()
