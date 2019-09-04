@@ -74,6 +74,12 @@ app = dash.Dash(
     routes_pathname_prefix='/graph/'
 )
 
+# Dash colors
+colors = {
+        'background': '#111111',
+        'text': '#7FDBFF'
+}
+
 
 """ ROUTES """
 @server.route("/")
@@ -99,10 +105,11 @@ def favicon():
 app.title = "Home Data"
 
 def serve_layout():
-    return html.Div(children=[
+    return html.Div(style={'backgroundColor': colors['background']},  children=[
     html.H1(children='Home Control',
         style={
-            'textAlign': 'center'
+            'textAlign': 'center',
+            'color': colors['text']
         }
     ),
 
@@ -110,7 +117,11 @@ def serve_layout():
         id='results_files',
         options=get_all_results(),
         #placeholder="Select a Week",
-        value='results.csv'
+        value='results.csv',
+        style={
+            'backgroundColor': colors['background'],
+            'color': colors['text']
+        }
     ),
 
     dcc.Graph(
@@ -151,9 +162,14 @@ def update_graph(n, results_file):
 def update_figure(results_file, n):
     if results_file:
         return {
-            'data': [ get_data(results_file, 2, filter = True) ],
+            'data': [ get_data(results_file, 2, filter = False) ],
             'layout': {
-                'title': 'Temperature'
+                'title': 'Temperature',
+                'backgroundColor': colors['background'],
+                'paper_bgcolor': colors['background'],
+                'font': {
+                    'color': colors['text']
+                }
             }
         }
     else:
