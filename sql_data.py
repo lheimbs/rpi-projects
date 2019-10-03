@@ -151,6 +151,19 @@ def add_to_db(date_time, temperature, humidity, brightness, pressure):
             connection.commit()
             print("Message added successfully.")
 
+def add_mqtt_to_db(date_time, topic, message):
+    with sqlite3.connect(DATABASE) as connection:
+        # insert developer detail
+        insert_with_param = """INSERT INTO 'mqtt_messages'
+                        ('datetime', 'topic', 'payload') 
+                        VALUES (?, ?, ?);"""
+
+        data_tuple = (date_time, topic, message)
+
+        cursor = connection.cursor()
+        cursor.execute(insert_with_param, data_tuple)
+        connection.commit()
+        print("Message added successfully.")
 
 if __name__ == "__main__":
     import os
