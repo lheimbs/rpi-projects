@@ -1,6 +1,3 @@
-#!/home/pi/projects/rpi-projects/venv/bin/python
-# coding=utf-8
-
 import time
 import datetime
 import os
@@ -12,6 +9,8 @@ import shutil
 import bme280
 import smbus2
 import ADC0832
+
+import sql_data
 
 FILE_FOLDER = os.path.join(os.sep, 'home', 'pi', 'log')
 RESULT_FILE = 'results.csv'
@@ -55,11 +54,11 @@ def init():
         for row in reversed(list(csv.reader(file))):
             if row:
                 if "date" in row:
-                    week=0
+                    week = 0
                 else:
-                    date=datetime.datetime.strptime(row[0] + ' ' + row[1], '%d-%m-%Y %H:%M:%S')
+                    date = datetime.datetime.strptime(row[0] + ' ' + row[1], '%d-%m-%Y %H:%M:%S')
                     week = date.isocalendar()[1]
-                    break 
+                    break
     return week
 
 def weekly_res_file(old_week):
@@ -103,13 +102,20 @@ def main():
         # get data from sensors
         data = bme280.sample(bus, bme_address)
         light = ADC0832.getResult()
-        
+
         # get the current date for logging
         curr_datetime = datetime.datetime.now()
         curr_date = curr_datetime.strftime('%d-%m-%Y')
         curr_time = curr_datetime.strftime('%H:%M:%S')
 
-        write_to_file("%s,%s,%4f,%4f,%d\n" % (curr_date,curr_time,data.temperature, data.humidity, light))
+        # write to db
+        sql_data.add_temp_to_db(curr_datetime, data.temperature)
+        sql_data.add_humidity_to_db(curr_datetime, data.humidity)
+        sql_data.add_pressure_to_db(curr_datetime, data.pressure)
+        sql_data.add_brightness_to_db(curr_datetime, light)
+
+        # write to file
+        write_to_file("%s,%s,%4f,%4f,%d\n" % (curr_date, curr_time, data.temperature, data.humidity, light))
 
         # get exactly one reading all 60s
         now_time = time.time()
@@ -125,3 +131,6 @@ if __name__ == '__main__':
         log(traceback.format_exc())
     finally:
         ADC0832.destroy()
+
+
+
