@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# coding=utf-8
+
 import time
 import datetime
 import os
@@ -6,10 +9,9 @@ import subprocess
 import argparse
 import csv
 import shutil
-import bme280
+import bme280 # pypi: RPi.bme280
 import smbus2
 import ADC0832
-
 import sql_data
 
 FILE_FOLDER = os.path.join(os.sep, 'home', 'pi', 'log')
@@ -41,24 +43,24 @@ def log(logstring):
 
 def init():
     log("Script started")
-
+    week = 0
+    log_file_path = os.path.join(FILE_FOLDER, RESULT_FILE)
     # Setup the photoresistor
     ADC0832.setup()
 
-    if not os.path.exists(os.path.join(FILE_FOLDER, RESULT_FILE)):
-        with open(os.path.join(FILE_FOLDER, RESULT_FILE), 'w') as logfile:
+    if not os.path.exists(log_file_path):
+        log("'{}' does not exist. Creating it new.".format(log_file_path))
+        with open(log_file_path, 'w', encoding='UTF-16') as logfile:
             logfile.write("date,time,temperature,humidity,brighness\n")
 
-    # get week of last result in results.csv
-    with open(os.path.join(FILE_FOLDER, RESULT_FILE), 'r') as file:
+    with open(log_file_path, 'r', encoding="UTF-16") as file:
         for row in reversed(list(csv.reader(file))):
-            if row:
-                if "date" in row:
-                    week = 0
-                else:
-                    date = datetime.datetime.strptime(row[0] + ' ' + row[1], '%d-%m-%Y %H:%M:%S')
-                    week = date.isocalendar()[1]
-                    break
+            if "date" in row:
+                week=0
+            else:
+                date=datetime.datetime.strptime(row[0] + ' ' + row[1], '%d-%m-%Y %H:%M:%S')
+                week = date.isocalendar()[1]
+                break 
     return week
 
 def weekly_res_file(old_week):
@@ -68,12 +70,14 @@ def weekly_res_file(old_week):
     date = datetime.datetime.now()
     week = date.isocalendar()[1]
 
-    if week > old_week or week < old_week:
+    if old_week == 0:
+        return week
+    elif week > old_week or week < old_week:
         log("Week has changed. Old Week: {}. New Week: {}".format(old_week, week))
         res_save_name = "week-" + str(old_week) + "-results.csv"
         shutil.copy2(os.path.join(FILE_FOLDER, RESULT_FILE), os.path.join(FILE_FOLDER, res_save_name))
 
-        with open(os.path.join(FILE_FOLDER, RESULT_FILE), 'w') as resfile:
+        with open(os.path.join(FILE_FOLDER, RESULT_FILE), 'w', encoding='UTF-16') as resfile:
             resfile.write("date,time,temperature,humidity,brighness\n")
         return week
     else:
@@ -81,7 +85,7 @@ def weekly_res_file(old_week):
 
 def write_to_file(res_string):
     ''' Write results to RESULTS_FILE '''
-    with open(os.path.join(FILE_FOLDER, RESULT_FILE), 'a+') as file:
+    with open(os.path.join(FILE_FOLDER, RESULT_FILE), 'a+', encoding='UTF-16') as file:
         file.write(res_string)
 
 def main():
@@ -94,6 +98,7 @@ def main():
     bus = smbus2.SMBus(bme_port)
     current_week=init()
     start_time = time.time()
+    #sql = SQL.SQL('/home/pi/data/data.db', 'room_data')
     while True:
 
         # if a new week has begun, backup last week and begin with a clean res file
@@ -108,14 +113,9 @@ def main():
         curr_date = curr_datetime.strftime('%d-%m-%Y')
         curr_time = curr_datetime.strftime('%H:%M:%S')
 
-        # write to db
-        sql_data.add_temp_to_db(curr_datetime, data.temperature)
-        sql_data.add_humidity_to_db(curr_datetime, data.humidity)
-        sql_data.add_pressure_to_db(curr_datetime, data.pressure)
-        sql_data.add_brightness_to_db(curr_datetime, light)
-
-        # write to file
+        #sql.add_data_to_db(curr_date + " " + curr_time, data.temperature, data.humidity, light)
         write_to_file("%s,%s,%4f,%4f,%d\n" % (curr_date, curr_time, data.temperature, data.humidity, light))
+        sql_data.add_to_db(date_time=data.timestamp, temperature=data.temperature, humidity=data.humidity, pressure=data.pressure, brightness=light)
 
         # get exactly one reading all 60s
         now_time = time.time()
@@ -131,6 +131,3 @@ if __name__ == '__main__':
         log(traceback.format_exc())
     finally:
         ADC0832.destroy()
-
-
-
