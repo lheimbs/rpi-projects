@@ -11,6 +11,7 @@ LAST_TEMP = 0
 MAX_DATETIME = pandas.Timestamp.now()
 MIN_DATETIME = pandas.Timestamp("2019-07-01-T00")
 
+
 def get_max_temp():
     max_temp = MAX_TEMP
     with sqlite3.connect(DATABASE) as connection:
@@ -22,6 +23,7 @@ def get_max_temp():
     else:
         print("Max temp could not be found.")
     return max_temp
+
 
 def get_min_temp():
     min_temp = MIN_TEMP
@@ -110,6 +112,85 @@ def get_day_temp_pandas():
 
     return data
 
+
+def csv_to_db(filepath):
+    DATABASE = 'data.db'
+    DATETIME = 'datetime'
+    TEMPERATURE = 'temperature'
+
+    res_df = pandas.read_csv(filepath, encoding="UTF-16")
+    #res_df = pandas.read_csv("~/Schreibtisch/week-38-results.csv", encoding="UTF-8")
+    #print(res_df)
+    #res_df.insert(0, DATETIME, pandas.to_datetime(res_df['date'] + " " + res_df['time']))
+    res_df.insert(0, DATETIME, res_df.apply(lambda x: datetime.strptime(x['date'] + " " + x['time'], '%d-%m-%Y %H:%M:%S'), axis=1))
+    res_df = res_df.drop(columns=['date', 'time'])
+    print(res_df)
+
+    with sqlite3.connect(DATABASE, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as conn:
+        res_df[[DATETIME, TEMPERATURE]].to_sql(TEMPERATURE, con=conn, index=False, index_label=DATETIME, if_exists='append')
+
+
+def add_temp_to_db(date_time, temperature):
+        with sqlite3.connect(DATABASE) as connection:
+
+            # insert developer detail
+            insert_with_param = """INSERT INTO 'temperature'
+                            ('datetime', 'temperature') 
+                            VALUES (?, ?);"""
+            data_tuple = (date_time, temperature)
+
+            cursor = connection.cursor()
+            cursor.execute(insert_with_param, data_tuple)
+            sqlConnection.commit()
+            print("Message added successfully.")
+
+
+def add_humidity_to_db(date_time, humidity):
+        with sqlite3.connect(DATABASE) as connection:
+
+            # insert developer detail
+            insert_with_param = """INSERT INTO 'humidity'
+                            ('datetime', 'humidity') 
+                            VALUES (?, ?);"""
+            data_tuple = (date_time, humidity)
+
+            cursor = connection.cursor()
+            cursor.execute(insert_with_param, data_tuple)
+            sqlConnection.commit()
+            print("Message added successfully.")
+
+
+def add_humidity_to_db(date_time, brightness):
+        with sqlite3.connect(DATABASE) as connection:
+
+            # insert developer detail
+            insert_with_param = """INSERT INTO 'brightness'
+                            ('datetime', 'brightness') 
+                            VALUES (?, ?);"""
+            data_tuple = (date_time, brightness)
+
+            cursor = connection.cursor()
+            cursor.execute(insert_with_param, data_tuple)
+            sqlConnection.commit()
+            print("Message added successfully.")
+
+
+def add_pressure_to_db(date_time, pressure):
+        with sqlite3.connect(DATABASE) as connection:
+
+            # insert developer detail
+            insert_with_param = """INSERT INTO 'pressure'
+                            ('datetime', 'pressure') 
+                            VALUES (?, ?);"""
+            data_tuple = (date_time, pressure)
+
+            cursor = connection.cursor()
+            cursor.execute(insert_with_param, data_tuple)
+            sqlConnection.commit()
+            print("Message added successfully.")
+
+
+
 if __name__ == "__main__":
     get_min_temp()
     get_max_temp()
@@ -117,5 +198,5 @@ if __name__ == "__main__":
     get_min_datetime()
     last_date=get_max_datetime()
     get_day_temp(last_date)
-    print(get_day_temp_pandas())
+    get_day_temp_pandas()
     quit()
