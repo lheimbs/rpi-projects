@@ -160,7 +160,7 @@ def add_humidity_to_db(date_time, humidity):
             print("Message added successfully.")
 
 
-def add_humidity_to_db(date_time, brightness):
+def add_brightness_to_db(date_time, brightness):
         with sqlite3.connect(DATABASE) as connection:
 
             # insert developer detail
