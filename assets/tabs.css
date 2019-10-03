@@ -1,0 +1,14 @@
+.custom__main__tab {
+    border-bottom: 1px solid #d6d6d6 !important;
+    padding: 6px !important;
+    font-weight: bold !important;
+    background-color: #111111 !important;
+}
+
+.custom__main__tab____selected {
+    border-top: 1px solid #d6d6d6 !important;
+    border-bottom: 1px solid #d6d6d6 !important;
+    background-color: #444444 !important;
+    color: white !important;
+    padding: 6px !important;
+}
