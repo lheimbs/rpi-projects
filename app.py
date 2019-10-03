@@ -3,20 +3,15 @@
 
 import os
 import pandas
-import numpy
-import sqlite3
 import dash
 import dash_daq as daq
 import dash_core_components as dcc
 import dash_html_components as html
 import scipy.signal as signal
-import plotly.graph_objs as go
-
 import sql_data
-
 from dash.dependencies import Input, Output
+from flask import Flask
 
-print(os.environ['_'])
 
 GRAPH_INTERVAL = os.environ.get("GRAPH_INTERVAL", 60000*5)
 COLORS = {
@@ -59,13 +54,17 @@ def layout_temp():
         className="app__temp",
     )
 
+""" FLASK SETUP """
+SERVER = Flask(__name__, static_folder='static')
+
 APP = dash.Dash(
-    __name__
+    __name__,
+    server=SERVER,
+    routes_pathname_prefix='/graph/'
 )
 """ Dash App """
 APP.title = "Home Data"
 APP.config['suppress_callback_exceptions'] = True
-server = APP.server
 
 APP.layout = html.Div(
     [
@@ -189,4 +188,4 @@ def update_day_temp_graph(interval):
     }
 
 if __name__ == "__main__":
-    APP.run_server(debug=True)
+    APP.run_server(debug=True, port=5002, host='0.0.0.0')
