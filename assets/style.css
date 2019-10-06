@@ -14,6 +14,7 @@ h6 {
 .app__content {
     display: flex;
     margin-top: 20px;
+    border: 1px solid black;
 }
 
 .app__header {
@@ -21,39 +22,112 @@ h6 {
     justify-content: center;
     margin-bottom: 2rem;
     /*color: #fff;*/
+    border: 1px solid black;
 }
 
 .app__header__title {
     letter-spacing: 0.23rem;
+    border: 1px solid black;
 }
 
 .app__tab__content {
     margin: 2% 2%;
+    border: 1px solid black;
 }
 
 .app__temp {
-    justify-content: center;
-    display: flex;
-    flex-direction: row;
+    /*display: flex;
+    flex-direction: column;
+    flex-grow: 1;*/
+    border: 1px solid black;
 }
 
-.temp__current {
+.app__general {
+
+}
+
+.general__services {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    border: 1px solid black;
+}
+
+.general__service__item {
     display: flex;
     flex-direction: column;
-    /*justify-content: center;*/
+    border: 1px solid black;
+    align-items: center;
+    flex-grow: 1;
+    margin: 1% 1%;
+}
+
+.general__services__states {
+    display: flex;
+    flex-direction: row;
+    border: 1px solid black;
+}
+
+.general__services__state {
     margin: 10px;
+    border: 1px solid black;
+    flex-grow: 1;
+}
+
+/*
+    Temperature Design
+    Layout:
+    -div app__temp
+        -div temp__curr__day
+            -div temp__current
+            -div temp__day
+        -div temp__hist
+
+*/
+
+.temp__hist {
+    margin: 5px;
+}
+
+.temp__hist__item {
+    margin: 1%;
+}
+
+
+.temp__curr__day {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+
+    margin: 5px;
 }
 
 .temp__day {
-    display: flex;
-    flex-direction: column;
+    flex-grow: 4;
+
     margin: 10px;
 }
 
-.temp__current__gauge {
-    margin-top: 50 !important;
+.temp__current {
+    flex-grow: 1;
+
+    width: 230px;
+    margin: 10px;
 }
 
+.title__center {
+    text-align: center;
+}
+
+*[data-dash-is-loading="true"]{
+    visibility: hidden;
+}
+*[data-dash-is-loading="true"]::before{
+    content: "Loading...";
+    display: inline-block;
+    color: grey;
+    visibility: visible;
+}
 
 @media only screen and (max-width: 600px) {
     .app__content {
@@ -75,5 +149,21 @@ h6 {
     .app__header__title {
         font-size: 1.5em;
         padding-top: 15px;
+    }
+
+    .general__services__states {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .general__services {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .temp__curr__day {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
 }
