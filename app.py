@@ -2,118 +2,282 @@
 #!coding=utf-8
 
 import os
+from datetime import datetime
 import pandas
 import dash
 import dash_daq as daq
 import dash_core_components as dcc
 import dash_html_components as html
-import scipy.signal as signal
-import sql_data
 from dash.dependencies import Input, Output
+import scipy.signal as signal
 from flask import Flask
 
+import pi_data
+import sql_data
 
-GRAPH_INTERVAL = os.environ.get("GRAPH_INTERVAL", 60000*5)
+
+GRAPH_INTERVAL = os.environ.get("GRAPH_INTERVAL", 60000)
 COLORS = {
     'foreground': '#123456',
     'background': '#111111',
 }
+EMPTY_GRAPH = {
+    'data': [ { 'x': [], 'y': [], }, ],
+    'layout': 
+    {
+        'backgroundColor': COLORS['background'],
+        'paper_bgcolor': COLORS['background'],
+        'plot_bgcolor': COLORS['background'],
+        'font': {
+            'color': COLORS['foreground']
+        },
+        'margin': {'l': 30, 'b': 30, 'r': 10, 't': 30},
+        #'width': '100%',
+        'height': '250',
+    }
+}
+
+def app_layout():
+    return html.Div(
+        [
+            # header
+            html.Div(
+                [
+                    html.H2("HOME CONTROL DASHBOARD", className="app__header__title")
+                ],
+                className="app__header"
+            ),
+            dcc.Tabs(
+                id="main-tabs",
+                value="temp-tab",
+                parent_className='custom__main__tabs',
+                className='custom__main__tabs__container',
+                children=[
+                    dcc.Tab(
+                        label="General",
+                        value="general-tab",
+                        className='custom__main__tab',
+                        selected_className='custom__main__tab____selected',
+                    ),
+                    dcc.Tab(
+                        label="Temperature",
+                        value="temp-tab",
+                        className='custom__main__tab',
+                        selected_className='custom__main__tab____selected',
+                    ),
+                ]
+            ),
+            html.Div(
+                id="main-tabs-content",
+                className="app__tab__content"
+            ),
+        ],
+        className="app__container",
+    )
 
 def layout_temp():
     return html.Div(
         [
-            # curent temperature
             html.Div(
-                id="current-temp",
-                className="temp__current",
-            ),
-            dcc.Interval(
-                id="current-temp-interval",
-                interval=int(GRAPH_INTERVAL),
-                n_intervals=0,
+                [
+                    # curent temperature
+                    html.Div(
+                        id="current-temp",
+                        className="temp__current",
+                    ),
+                    html.Div(
+                        [
+                            html.H6("Last 24 hours", className="temp__day__title title__center"),
+                            dcc.Graph(
+                                id="day-temp-graph",
+                                figure=EMPTY_GRAPH,
+                                config={
+                                    'staticPlot': True
+                                },
+                                className="graph",
+                            ),
+                            dcc.Interval(
+                                id="day-temp-update",
+                                interval=int(GRAPH_INTERVAL),
+                                n_intervals=0,
+                            ),
+                        ],
+                        className="temp__day",
+                    )
+                ],
+                className="temp__curr__day",
             ),
             html.Div(
                 [
-                    html.H6("Last 24 hours", className="temp__day__title"),
-                    dcc.Graph(
-                        id="day-temp-graph",
-                        config={
-                            'staticPlot': True
-                        },
-                        className="graph",
+                    html.H6("History", id="temp-hist-item", className="title__center"),
+                    dcc.DatePickerRange(
+                        id="temp-history-date-picker",
+                        start_date_placeholder_text="Start Period",
+                        end_date_placeholder_text="End Period",
+                        #minimum_nights=1,
+                        display_format='DD MM Y',
+                        month_format='MM YYYY',
+                        day_size=35,
+                        first_day_of_week=1,
+                        persistence=True,
+                        persistence_type='session',
+                        updatemode='bothdates',
+                        with_full_screen_portal=True,
+                        className="temp__hist__item",
                     ),
-                    dcc.Interval(
-                        id="day-temp-update",
-                        interval=int(GRAPH_INTERVAL),
-                        n_intervals=0,
-                    ),
+                    dcc.Loading(id="loading-1", children=[
+                        dcc.Graph(
+                            id="temp-history-graph",
+                            figure=EMPTY_GRAPH,
+                            config={
+                                        'staticPlot': False,
+                                        'showSendToCloud': False,
+                                        'showLink': False,
+                                        'displaylogo': False,
+                                        'modeBarButtonsToRemove': ['sendDataToCloud', 'hoverClosestCartesian', 'hoverCompareCartesian', 'zoom3d', 'pan3d', 'orbitRotation', 'tableRotation', 'handleDrag3d', 'resetCameraDefault3d', 'resetCameraLastSave3d', 'hoverClosest3d; (Geo) zoomInGeo', 'zoomOutGeo', 'resetGeo', 'hoverClosestGeo', 'hoverClosestGl2d', 'hoverClosestPie', 'toggleSpikelines', 'toImage'],
+                                    },
+                            className="temp__hist__item graph",
+                        )
+                    ], type="default"),
                 ],
-                className="three-quater column temp__day",
-            )
+                className="temp__hist"
+            ),
         ],
         className="app__temp",
     )
 
-""" FLASK SETUP """
+def layout_general():
+    return html.Div(
+        [
+            html.H4("Raspberry Pi Service Data:"),
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.H6("Dashboard:"),
+                            html.Div(
+                                id="dashbaord-states",
+                                className="general__services__states"
+                            ),
+                            dcc.Interval(
+                                id="dashboard-interval",
+                                interval=int(GRAPH_INTERVAL),
+                                n_intervals=0,
+                            ),
+                            
+                        ],
+                        className="general__service__item"
+                    ),
+                    html.Div(
+                        [
+                            html.H6("Datalogger:"),
+                            html.Div(
+                                id="datalogger-states",
+                                className="general__services__states"
+                            ),
+                            dcc.Interval(
+                                id="datalogger-interval",
+                                interval=int(GRAPH_INTERVAL),
+                                n_intervals=0,
+                            ),
+                            
+                        ],
+                        className="general__service__item"
+                    ),
+                    html.Div(
+                        [
+                            html.H6("MQTT:"),
+                            html.Div(
+                                id="mqtt-states",
+                                className="general__services__states"
+                            ),
+                            dcc.Interval(
+                                id="mqtt-interval",
+                                interval=int(GRAPH_INTERVAL),
+                                n_intervals=0,
+                            ),
+                            
+                        ],
+                        className="general__service__item"
+                    ),
+                ],
+                className="general__services"
+            ),
+        ],
+        className="app__general",
+    )
+
+def get_states(sub_color, active_color, load_color):
+    return [
+        daq.Indicator(
+            label="Service Running",
+            color=sub_color,
+            className="general__services__state",
+        ),
+        daq.Indicator(
+            label="Service State",
+            color=active_color,
+            className="general__services__state",
+        ),
+        daq.Indicator(
+            label="State Config File",
+            color=load_color,
+            className="general__services__state",
+        ),
+    ]
+
+def get_state_colors(data):
+    if data['LoadState'] == 'loaded':
+        load_color = "green"
+    elif data['LoadState'] == 'masked':
+        load_color = "yellow"
+    else:
+        load_color = "red"
+
+    if data['SubState'] == 'running':
+        sub_color = "green"
+    else:
+        sub_color = "red"
+    
+    if data['ActiveState'] == 'active':
+        active_color = "green"
+    elif data['ActiveState'] in ['reloading', 'activating', 'deactivating']:
+        active_color = "yellow"
+    elif data['ActiveState'] == 'inactive':
+        active_color = "orange"
+    else:
+        active_color = "red"
+
+    return (sub_color, active_color, load_color)
+
+# FLASK SETUP
 SERVER = Flask(__name__, static_folder='static')
 
+# DASH SETUP
 APP = dash.Dash(
     __name__,
     server=SERVER,
     routes_pathname_prefix='/graph/'
 )
-""" Dash App """
 APP.title = "Home Data"
 APP.config['suppress_callback_exceptions'] = True
 
-APP.layout = html.Div(
-    [
-        # header
-        html.Div(
-            [
-                html.H2("HOME CONTROL DASHBOARD", className="app__header__title")
-            ],
-            className="app__header"
-        ),
-        dcc.Tabs(
-            id="main-tabs",
-            value="temp-tab",
-            parent_className='custom__main__tabs',
-            className='custom__main__tabs__container',
-            children=[
-                dcc.Tab(
-                    label="General",
-                    value="general-tab",
-                    className='custom__main__tab',
-                    selected_className='custom__main__tab____selected',
-                ),
-                dcc.Tab(
-                    label="Temperature",
-                    value="temp-tab",
-                    className='custom__main__tab',
-                    selected_className='custom__main__tab____selected',
-                ),
-            ]
-        ),
-        html.Div(
-            id="main-tabs-content",
-            className="app__tab__content"
-        ),
-    ],
-    className="app__container",
-)
+APP.layout = app_layout
+
+
 
 @APP.callback(Output('main-tabs-content', 'children'),
-                [Input('main-tabs', 'value')])
+              [Input('main-tabs', 'value')])
 def render_content(tab):
     if tab == 'general-tab':
-        layout = html.P("No Layout defined.")#layout_general()
+        layout = layout_general()
     elif tab == 'temp-tab':
         layout = layout_temp()
     return layout
 
+
 @APP.callback(Output('current-temp', 'children'),
-                [Input('current-temp-interval', 'n_intervals')])
+              [Input('day-temp-update', 'n_intervals')])
 def update_current_temp(interval):
     last_temp = sql_data.get_last_temp()
     min_temp = sql_data.get_min_temp()
@@ -122,7 +286,7 @@ def update_current_temp(interval):
     temp_range = (max_temp-min_temp)/2
 
     return [
-        html.H6("Current Temperature", className="temp__current__title"),
+        html.H6("Current Temperature", className="temp__current__title title__center"),
         html.Div(
             [
                 daq.Gauge(
@@ -150,17 +314,17 @@ def update_current_temp(interval):
 
 
 @APP.callback(Output('day-temp-graph', 'figure'),
-                [Input('day-temp-update', 'n_intervals')])
+              [Input('day-temp-update', 'n_intervals')])
 def update_day_temp_graph(interval):
     day_data = sql_data.get_day_temp_pandas()
     day_data = day_data.sort_values('datetime')
 
-    # First, design the Buterworth filter
+    # Design of Buterworth filter
     filter_order  = 2    # Filter order
     cutoff_freq = 0.2 # Cutoff frequency
     B, A = signal.butter(filter_order, cutoff_freq, output='ba')
 
-    # Second, apply the filter
+    # Apply filter
     tempf = signal.filtfilt(B,A, day_data['temperature'])
 
     return {
@@ -173,9 +337,9 @@ def update_day_temp_graph(interval):
                 'mode': 'lines'
             },
         ],
-        
         'layout': 
         {
+            'autosize': True,
             'backgroundColor': COLORS['background'],
             'paper_bgcolor': COLORS['background'],
             'plot_bgcolor': COLORS['background'],
@@ -183,9 +347,83 @@ def update_day_temp_graph(interval):
                 'color': COLORS['foreground']
             },
             'margin': {'l': 30, 'b': 30, 'r': 10, 't': 10},
+            #'width': '100%',
             'height': '250',
         }
     }
+
+
+@APP.callback(
+    Output('temp-history-graph', 'figure'),
+    [Input('temp-history-date-picker', 'start_date'),
+     Input('temp-history-date-picker', 'end_date')])
+def update_temp_history_graph(start_date, end_date):
+    if start_date is not None and end_date is not None:
+        start_date = datetime.strptime(start_date, '%Y-%m-%d')
+        end_date = datetime.strptime(end_date, '%Y-%m-%d')
+        data = sql_data.get_temp_history(start_date, end_date)
+
+        if data.empty:
+            return EMPTY_GRAPH
+
+        # Design of Buterworth filter
+        filter_order  = 2    # Filter order
+        cutoff_freq = 0.2 # Cutoff frequency
+        B, A = signal.butter(filter_order, cutoff_freq, output='ba')
+
+        # Apply filter
+        tempf = signal.filtfilt(B,A, data['temperature'], axis=0)
+
+        return {
+            'data': [
+                {
+                    'x': data['datetime'],
+                    'y': tempf,
+                    'type': 'scatter',
+                    'name': 'Data',
+                    'mode': 'lines'
+                },
+            ],
+            'layout': 
+            {
+                'backgroundColor': COLORS['background'],
+                'paper_bgcolor': COLORS['background'],
+                'plot_bgcolor': COLORS['background'],
+                'font': {
+                    'color': COLORS['foreground']
+                },
+                'margin': {'l': 30, 'b': 30, 'r': 10, 't': 10},
+                #'width': '100%',
+                'height': '500',
+            }
+        }
+    else:
+        return EMPTY_GRAPH
+
+
+@APP.callback(Output('dashbaord-states', 'children'),
+              [Input('dashboard-interval', 'n_intervals')])
+def update_dashboard_service(interval):
+    data = pi_data.get_service_data("dashboard")
+    colors = get_state_colors(data)
+    return get_states(*colors)
+
+
+@APP.callback(Output('datalogger-states', 'children'),
+              [Input('datalogger-interval', 'n_intervals')])
+def update_datalogger_service(interval):
+    data = pi_data.get_service_data("data-logger")
+    colors = get_state_colors(data)
+    return get_states(*colors)
+
+
+@APP.callback(Output('mqtt-states', 'children'),
+              [Input('mqtt-interval', 'n_intervals')])
+def update_mqtt_service(interval):
+    data = pi_data.get_service_data("mqtthandler")
+    colors = get_state_colors(data)
+    return get_states(*colors)
+
 
 if __name__ == "__main__":
     APP.run_server(debug=True, port=5002, host='0.0.0.0')
