@@ -46,7 +46,7 @@ def init():
     week = 0
     log_file_path = os.path.join(FILE_FOLDER, RESULT_FILE)
     # Setup the photoresistor
-    ADC0832.setup()
+    #ADC0832.setup()
 
     if not os.path.exists(log_file_path):
         log("'{}' does not exist. Creating it new.".format(log_file_path))
@@ -106,7 +106,7 @@ def main():
 
         # get data from sensors
         data = bme280.sample(bus, bme_address)
-        light = ADC0832.getResult()
+        light = 0#ADC0832.getResult()
 
         # get the current date for logging
         curr_datetime = datetime.datetime.now()
