@@ -9,6 +9,7 @@ import dash_daq as daq
 import dash_core_components as dcc
 import dash_html_components as html
 from dash.dependencies import Input, Output
+import dash_table
 import scipy.signal as signal
 from flask import Flask
 
@@ -20,6 +21,7 @@ GRAPH_INTERVAL = os.environ.get("GRAPH_INTERVAL", 60000)
 COLORS = {
     'foreground': '#123456',
     'background': '#111111',
+    'light-background': '#222222',
 }
 EMPTY_GRAPH = {
     'data': [ { 'x': [], 'y': [], }, ],
@@ -62,6 +64,12 @@ def app_layout():
                     dcc.Tab(
                         label="Temperature",
                         value="temp-tab",
+                        className='custom__main__tab',
+                        selected_className='custom__main__tab____selected',
+                    ),
+                    dcc.Tab(
+                        label="MQTT",
+                        value="mqtt-tab",
                         className='custom__main__tab',
                         selected_className='custom__main__tab____selected',
                     ),
@@ -207,6 +215,32 @@ def layout_general():
         className="app__general",
     )
 
+def layout_mqtt():
+    data = sql_data.get_mqtt_messages()
+    print(data)
+    return html.Div(
+        [
+            html.H4("All MQTT Messages:"),
+            dash_table.DataTable(
+                id='table',
+                columns=[{"name": i, "id": i} for i in data.columns],
+                data=data.to_dict('records'),
+
+                style_as_list_view=True,
+                style_header={
+                    'backgroundColor': COLORS['light-background'],
+                    'fontWeight': 'bold'
+                },
+                style_cell={
+                    'padding': '5px',
+                    'textAlign': 'center',
+                    'backgroundColor': COLORS['background'],
+                },
+            ),
+        ],
+        className="app__mqtt",
+    )
+
 def get_states(sub_color, active_color, load_color):
     return [
         daq.Indicator(
@@ -273,6 +307,8 @@ def render_content(tab):
         layout = layout_general()
     elif tab == 'temp-tab':
         layout = layout_temp()
+    elif tab == 'mqtt-tab':
+        layout = layout_mqtt()
     return layout
 
 
@@ -423,6 +459,19 @@ def update_mqtt_service(interval):
     data = pi_data.get_service_data("mqtthandler")
     colors = get_state_colors(data)
     return get_states(*colors)
+
+"""@APP.callback(Output('mqtt-data', 'children'),
+              [Input('mqtt-data-interval', 'n_intervals')])
+def update_mqtt_data(_):
+    data = sql_data.get_mqtt_messages()
+    if data is not None and not data.empty:
+        return dash_table.DataTable(
+            id='table',
+            columns=[{"name": i, "id": i} for i in data.columns],
+            data=data.to_dict(),
+        )
+    else:
+        return None"""
 
 
 if __name__ == "__main__":

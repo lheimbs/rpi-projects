@@ -187,6 +187,22 @@ def add_mqtt_to_db(date_time, topic, message):
         connection.commit()
         print("MQTT-Message added successfully.")
 
+def get_mqtt_messages():
+    data = None
+    with sqlite3.connect(
+            DATABASE,
+            detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
+    ) as connection:
+        #print("Query database for temperature-data of the last 24 hours using pandas read_sql().")
+        data = pandas.read_sql(
+            "SELECT * FROM 'mqtt_messages' ORDER BY datetime ASC;",
+            parse_dates=['datetime'],
+            con=connection
+        )
+        print("Successfully queried mqtt messages.")
+    return data
+
+
 if __name__ == "__main__":
     import os
     f='/home/pi/log/'
