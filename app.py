@@ -18,6 +18,7 @@ import sql_data
 
 
 GRAPH_INTERVAL = os.environ.get("GRAPH_INTERVAL", 60000)
+STATS_INTERVAL = os.environ.get("STATS_INTERVAL", 5000)
 COLORS = {
     'foreground': '#123456',
     'background': '#111111',
@@ -157,6 +158,59 @@ def layout_temp():
 def layout_general():
     return html.Div(
         [
+            html.H4("Raspberry Pi Stats:"),
+            html.Div(
+                [
+                    html.Div(
+                        [
+                            html.Div(
+                                [
+                                    html.H6("CPU:"),
+                                    html.Div(
+                                        id="cpu-stats",
+                                        className="general__stats__gauge",
+                                    ),
+                                ],
+                                className="general__stats__cpu",
+                            ),
+                            html.Div(
+                                [
+                                    html.Div(
+                                        [
+                                            html.H6("RAM:"),
+                                            html.Div(
+                                                id="ram-stats",
+                                                className="general__stats__item",
+                                            ),
+                                        ],
+                                        id="ram-container",
+                                        className="general__stats__item",
+                                    ),
+                                    html.Div(
+                                        [
+                                            html.H6("Disk:"),
+                                            html.Div(
+                                                id="disk-stats",
+                                            ),
+                                        ],
+                                        id="disk-container",
+                                        className="general__stats__item",
+                                    ),
+                                ],
+                                className="general__stats__storage",
+                            ),
+                            
+                        ],
+                        className="general__stats__items",
+                    ),
+                    dcc.Interval(
+                                id="general-stats-update",
+                                interval=int(STATS_INTERVAL),
+                                n_intervals=0,
+                    ),
+                ],
+                className="general__stats",
+            ),
             html.H4("Raspberry Pi Service Data:"),
             html.Div(
                 [
@@ -209,7 +263,7 @@ def layout_general():
                         className="general__service__item"
                     ),
                 ],
-                className="general__services"
+                className="general__services",
             ),
         ],
         className="app__general",
@@ -460,19 +514,51 @@ def update_mqtt_service(interval):
     colors = get_state_colors(data)
     return get_states(*colors)
 
-"""@APP.callback(Output('mqtt-data', 'children'),
-              [Input('mqtt-data-interval', 'n_intervals')])
-def update_mqtt_data(_):
-    data = sql_data.get_mqtt_messages()
-    if data is not None and not data.empty:
-        return dash_table.DataTable(
-            id='table',
-            columns=[{"name": i, "id": i} for i in data.columns],
-            data=data.to_dict(),
-        )
-    else:
-        return None"""
 
+@APP.callback(Output('cpu-stats', 'children'),
+              [Input('general-stats-update', 'n_intervals')])
+def cpu_state(interval):
+    cpu_percent = pi_data.get_cpu_percent()
+    return daq.Gauge(
+        id="cpu-gauge",
+        value=cpu_percent,
+        min=0,
+        max=100,
+        showCurrentValue=True,
+        units="%",
+        scale={'start': 0, 'interval': 5, 'labelInterval': 25},
+        color={
+            "gradient":True,
+            "ranges":{
+                "green":[0,33],
+                "yellow":[33,66],
+                "red":[66,100]
+            }
+        },
+        size=200,
+    )
+
+
+@APP.callback(Output('ram-stats', 'children'),
+              [Input('general-stats-update', 'n_intervals')])
+def ram_state(interval):
+    ram = pi_data.get_ram_data()
+    return daq.GraduatedBar(
+        max=100,
+        value=ram['percent'],
+        showCurrentValue=True,
+    )
+
+
+@APP.callback(Output('disk-stats', 'children'),
+              [Input('general-stats-update', 'n_intervals')])
+def disk_state(interval):
+    disk = pi_data.get_disk_data()
+    return daq.GraduatedBar(
+        max=100,
+        value=disk['percent'],
+        showCurrentValue=True,
+    )
 
 if __name__ == "__main__":
     APP.run_server(debug=True, port=5002, host='0.0.0.0')

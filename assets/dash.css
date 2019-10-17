@@ -1,4 +1,16 @@
+/*
+GraduatedBar - background
+*/
+.coiBuO {
+    background-color: #111111 !important;
+    margin: 10px;
+    border: 1px solid #333333;
+}
 
+
+/*
+DateMonthPicker
+*/
 .DateInput {
     color: #7FDBFF !important;
     background-color: #111111 !important;
