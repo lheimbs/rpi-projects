@@ -382,18 +382,17 @@ def update_current_temp(interval):
                 daq.Gauge(
                     id="current-temp-gauge",
                     value=last_temp,
-                    min=min_temp,
-                    max=max_temp,
+                    min=10,
+                    max=30,
                     showCurrentValue=True,
                     units="°C",
-                    scale={'start': min_temp, 'interval': 1, 'labelInterval': 2, 'custom': {
-                        20: '20',
-                    }},
+                    #scale={'interval': 1, 'labelInterval': 2},
                     color={
                         "gradient":True,
                         "ranges":{
-                            "blue":[min_temp, min_temp+temp_range],
-                            "red":[max_temp-temp_range, max_temp]
+                            "blue":[10, 18],
+                            "green":[18, 23],
+                            "red":[23, 30]
                         }
                     },
                 )

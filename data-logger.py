@@ -14,9 +14,9 @@ import smbus2
 import ADC0832
 import sql_data
 
-FILE_FOLDER = os.path.join(os.sep, 'home', 'pi', 'log')
-RESULT_FILE = 'results.csv'
-LOG_FILE = 'data_logger.log'
+#FILE_FOLDER = os.path.join(os.sep, 'home', 'pi', 'log')
+#RESULT_FILE = 'results.csv'
+#LOG_FILE = 'data_logger.log'
 
 ap = argparse.ArgumentParser()
 ap.add_argument("-v", "--verbosity", type=int, choices=[0,1,2], default=0,
@@ -96,26 +96,30 @@ def main():
     bme_port = 1
     bme_address = 0x76
     bus = smbus2.SMBus(bme_port)
-    current_week=init()
+    #current_week=init()
     start_time = time.time()
     #sql = SQL.SQL('/home/pi/data/data.db', 'room_data')
     while True:
 
         # if a new week has begun, backup last week and begin with a clean res file
-        current_week = weekly_res_file(current_week)
+        #current_week = weekly_res_file(current_week)
 
-        # get data from sensors
-        data = bme280.sample(bus, bme_address)
-        light = 0#ADC0832.getResult()
+        try:
+            # get data from sensors
+            data = bme280.sample(bus, bme_address)
+            light = 0#ADC0832.getResult()
 
-        # get the current date for logging
-        curr_datetime = datetime.datetime.now()
-        curr_date = curr_datetime.strftime('%d-%m-%Y')
-        curr_time = curr_datetime.strftime('%H:%M:%S')
+            # get the current date for logging
+            curr_datetime = datetime.datetime.now()
+            curr_date = curr_datetime.strftime('%d-%m-%Y')
+            curr_time = curr_datetime.strftime('%H:%M:%S')
 
-        #sql.add_data_to_db(curr_date + " " + curr_time, data.temperature, data.humidity, light)
-        write_to_file("%s,%s,%4f,%4f,%d\n" % (curr_date, curr_time, data.temperature, data.humidity, light))
-        sql_data.add_to_db(date_time=data.timestamp, temperature=data.temperature, humidity=data.humidity, pressure=data.pressure, brightness=light)
+            #sql.add_data_to_db(curr_date + " " + curr_time, data.temperature, data.humidity, light)
+            #write_to_file("%s,%s,%4f,%4f,%d\n" % (curr_date, curr_time, data.temperature, data.humidity, light))
+            sql_data.add_to_db(date_time=data.timestamp, temperature=data.temperature, humidity=data.humidity, pressure=data.pressure, brightness=light)
+
+        except Exception as e:
+            log("Error occured getting data: {}".format(e))
 
         # get exactly one reading all 60s
         now_time = time.time()
