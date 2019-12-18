@@ -501,7 +501,7 @@ def update_dashboard_service(interval):
 @APP.callback(Output('datalogger-states', 'children'),
               [Input('datalogger-interval', 'n_intervals')])
 def update_datalogger_service(interval):
-    data = pi_data.get_service_data("data-logger")
+    data = pi_data.get_service_data("roomdatalogger")
     colors = get_state_colors(data)
     return get_states(*colors)
 
@@ -509,7 +509,7 @@ def update_datalogger_service(interval):
 @APP.callback(Output('mqtt-states', 'children'),
               [Input('mqtt-interval', 'n_intervals')])
 def update_mqtt_service(interval):
-    data = pi_data.get_service_data("mqtthandler")
+    data = pi_data.get_service_data("tabletbattery")
     colors = get_state_colors(data)
     return get_states(*colors)
 

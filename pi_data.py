@@ -22,7 +22,7 @@ def get_service_data(service):
         'ExecMainExitTimestamp': ''
     }
     try:
-        key_value = subprocess.check_output(["systemctl", "show", service],
+        key_value = subprocess.check_output(["systemctl","--user", "show", service],
                                             universal_newlines=True).split('\n')
     except subprocess.CalledProcessError as error:
         print(error.returncode, error.cmd, error.stdout, error.stderr)

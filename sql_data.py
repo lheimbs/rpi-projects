@@ -2,8 +2,9 @@
 # coding=utf-8
 
 import sqlite3
-from datetime import datetime, timedelta
 import pandas
+import logging
+from datetime import datetime, timedelta
 
 DATABASE = 'data.db'
 TABLE = 'room-data'
@@ -15,17 +16,18 @@ LAST_TEMP = 0
 MAX_DATETIME = pandas.Timestamp.now()
 MIN_DATETIME = pandas.Timestamp("2019-07-01-T00")
 
+logger = logging.getLogger(__name__)
 
 def get_max_temp():
     max_temp = MAX_TEMP
     with sqlite3.connect(DATABASE) as connection:
         cursor = connection.cursor()
-        #print("Query database for max value of column 'temperature' from table 'room'.")
+        logger.info("Query database for max value of column 'temperature' from table 'room'.")
         max_temp = cursor.execute("SELECT MAX(temperature) FROM 'room-data'").fetchone()[0]
     if max_temp < MAX_TEMP:
-        print("Found max temperature: {}.".format(max_temp))
+        logger.info("Found max temperature: {}.".format(max_temp))
     else:
-        print("Max temp could not be found.")
+        logger.warning("Max temp could not be found.")
     return max_temp
 
 
@@ -33,24 +35,24 @@ def get_min_temp():
     min_temp = MIN_TEMP
     with sqlite3.connect(DATABASE) as connection:
         cursor = connection.cursor()
-        #print("Query database for min value of column 'temperature' from table 'room'.")
+        logger.info("Query database for min value of column 'temperature' from table 'room'.")
         min_temp = cursor.execute("SELECT MIN(temperature) FROM 'room-data'").fetchone()[0]
     if min_temp > MIN_TEMP:
-        print("Found min temperature: {}.".format(min_temp))
+        logger.info("Found min temperature: {}.".format(min_temp))
     else:
-        print("Max temp could not be found.")
+        logger.warning("Max temp could not be found.")
     return min_temp
 
 def get_last_temp():
     last = LAST_TEMP
     with sqlite3.connect(DATABASE) as connection:
         cursor = connection.cursor()
-        #print("Query database for newest value of column 'temperature' from table 'room', ordered by column 'datetime'.")
+        logger.info("Query database for newest value of column 'temperature' from table 'room', ordered by column 'datetime'.")
         last = cursor.execute("SELECT temperature FROM 'room-data' ORDER BY datetime DESC LIMIT 1").fetchone()[0]
     if last > LAST_TEMP:
-        print("Found last temperature: {}.".format(last))
+        logger.info("Found last temperature: {}.".format(last))
     else:
-        print("Max temp could not be found.")
+        logger.warning("Max temp could not be found.")
     return last
 
 def get_max_datetime():
@@ -60,26 +62,26 @@ def get_max_datetime():
             detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
         ) as connection:
         cursor = connection.cursor()
-        #print("Query database for max value of column 'datetime' from table 'room'.")
+        logger.info("Query database for max value of column 'datetime' from table 'room'.")
         max_datetime = cursor.execute("SELECT datetime FROM 'room-data' ORDER BY datetime DESC LIMIT 1").fetchone()[0]
 
     if max_datetime < MAX_DATETIME:
-        print("Found max datetime: {}.".format(max_datetime))
+        logger.info("Found max datetime: {}.".format(max_datetime))
     else:
-        print("Max datetime could not be found.")
+        logger.warning("Max datetime could not be found.")
     return max_datetime
 
 def get_min_datetime():
     min_datetime = MIN_DATETIME
     with sqlite3.connect(DATABASE, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as connection:
         cursor = connection.cursor()
-        #print("Query database for min value of column 'datetime' from table 'room'.")
+        logger.info("Query database for min value of column 'datetime' from table 'room'.")
         min_datetime = pandas.Timestamp(cursor.execute("SELECT MIN(datetime) FROM 'room-data'").fetchone()[0])
 
     if min_datetime > MIN_DATETIME:
-        print("Found min datetime: {}.".format(min_datetime))
+        logger.info("Found min datetime: {}.".format(min_datetime))
     else:
-        print("Max datetime could not be found.")
+        logger.warning("Max datetime could not be found.")
     return min_datetime
 
 def get_day_temp(start_datetime):
@@ -89,14 +91,14 @@ def get_day_temp(start_datetime):
                          detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
                         ) as connection:
         cursor = connection.cursor()
-        #print("Query database for temperature-data of the last 24 hours.")
+        logger.info("Query database for temperature-data of the last 24 hours.")
         data = cursor.execute("SELECT datetime, temperature FROM 'room-data' WHERE datetime > ?", 
                               (query_datetime, )).fetchall()
 
     if data:
-        print("Successfully recieved {} Values.".format(len(data)))
+        logger.info("Successfully recieved {} Values.".format(len(data)))
     else:
-        print("Could not get any values.")
+        logger.warning("Could not get any values.")
     return data
 
 def get_day_temp_pandas():
@@ -107,13 +109,13 @@ def get_day_temp_pandas():
     ) as connection:
 
         cursor = connection.cursor()
-        #print("Query database for max value of column 'datetime' from table 'room'.")
+        logger.info("Query database for max value of column 'datetime' from table 'room'.")
         max_datetime = cursor.execute("SELECT datetime FROM 'room-data' ORDER BY datetime DESC LIMIT 1").fetchone()[0]
         query_datetime = max_datetime - timedelta(hours=24)
 
-        #print("Query database for temperature-data of the last 24 hours using pandas read_sql().")
+        logger.info("Query database for temperature-data of the last 24 hours using pandas read_sql().")
         data = pandas.read_sql("SELECT datetime, temperature FROM 'room-data' WHERE datetime > ?", params=(query_datetime, ), parse_dates=['datetime'], con=connection)
-        print("Successfully queried temperature data from the last 24hrs")
+        logger.info("Successfully queried temperature data from the last 24hrs")
 
     return data
 
@@ -124,14 +126,14 @@ def get_temp_history(start_time, end_time):
             DATABASE,
             detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
-        #print("Query database for temperature-data of the last 24 hours using pandas read_sql().")
+        logger.info("Query database for temperature-data of the last 24 hours using pandas read_sql().")
         data = pandas.read_sql(
             "SELECT datetime, temperature FROM 'room-data' WHERE datetime BETWEEN ? and ?;", 
             params=(start_time, end_time), 
             parse_dates=['datetime'], 
             con=connection
         )
-        print("Successfully queried temperature data between {} and {}".format(
+        logger.info("Successfully queried temperature data between {} and {}".format(
             datetime.strftime(start_time, '%d-%m-%Y'),
             datetime.strftime(end_time, '%d-%m-%Y'),
         ))
@@ -159,7 +161,7 @@ def csv_to_db(filepath):
         res_df.to_sql('room', con=conn, index=False, index_label=dt, if_exists='append')
 
 
-def add_to_db(date_time, temperature, humidity, brightness, pressure):
+def add_room_data_to_db(date_time, temperature, humidity, brightness, pressure):
         with sqlite3.connect(DATABASE) as connection:
 
             # insert developer detail
@@ -171,7 +173,7 @@ def add_to_db(date_time, temperature, humidity, brightness, pressure):
             cursor = connection.cursor()
             cursor.execute(insert_with_param, data_tuple)
             connection.commit()
-            print("Data added successfully.")
+            logger.info("Data added successfully.")
 
 def add_mqtt_to_db(date_time, topic, message):
     with sqlite3.connect(DATABASE) as connection:
@@ -185,7 +187,7 @@ def add_mqtt_to_db(date_time, topic, message):
         cursor = connection.cursor()
         cursor.execute(insert_with_param, data_tuple)
         connection.commit()
-        print("MQTT-Message added successfully.")
+        logger.info("MQTT-Message '%s' added successfully.", message)
 
 def get_mqtt_messages():
     data = None
@@ -193,17 +195,17 @@ def get_mqtt_messages():
             DATABASE,
             detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
-        #print("Query database for temperature-data of the last 24 hours using pandas read_sql().")
+        logger.info("Query database for temperature-data of the last 24 hours using pandas read_sql().")
         data = pandas.read_sql(
-            "SELECT * FROM 'mqtt_messages' ORDER BY datetime ASC;",
+            "SELECT * FROM 'mqtt_messages' ORDER BY datetime DESC;",
             parse_dates=['datetime'],
             con=connection
         )
-        print("Successfully queried mqtt messages.")
+        logger.info("Successfully queried mqtt messages.")
     return data
 
 
-if __name__ == "__main__":
+def log_to_db():
     import os
     f='/home/pi/log/'
     file=os.listdir(f)
@@ -227,3 +229,4 @@ if __name__ == "__main__":
     get_day_temp(last_date)
     get_day_temp_pandas()
     quit()
+
