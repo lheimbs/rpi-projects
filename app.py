@@ -396,7 +396,7 @@ SERVER = Flask(__name__, static_folder='static')
 APP = dash.Dash(
     __name__,
     server=SERVER,
-    routes_pathname_prefix='/graph/'
+    #routes_pathname_prefix='/graph/'
 )
 APP.title = "Home Data"
 APP.config['suppress_callback_exceptions'] = True
