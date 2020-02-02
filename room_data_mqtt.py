@@ -8,7 +8,6 @@ import paho.mqtt.client as mqtt
 from datetime import datetime
 
 import sql_data
-import rf_handler
 
 parser = argparse.ArgumentParser(__name__)
 levels = ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
@@ -22,39 +21,32 @@ logging.basicConfig(level=options.log_level,
 logger = logging.getLogger(__name__)
 
 def on_connect(client, userdata, flags, rc):
-    client.subscribe("tablet/shield/battery")
+    client.subscribe("room/data")
     logger.debug("'on_connect' called.")
 
 def on_message(client, userdata, msg):
     logger.debug("'on_message' called, msg='%s'", str(msg))
     try:
         message_to_db(msg)
-        handle_battery_level(msg)
-        #threading.Thread(target=handle_battery_level, args=(msg,)).start()
     except:
-        logger.exception("Error handling incoming message")
+        logger.exception("Error wrinting incoming message to mqtt database.")
 
-def handle_battery_level(msg):
     payload = msg.payload.decode("utf-8")
+        
 
-    try:
-        n_level = int(payload)
-    except ValueError:
-        n_level = 0
-    logger.debug("[handle_battery_level] n_level = %d", n_level)
-
-    if payload == "low" or (0 < n_level <= 20):
-        logger.info("Battery low detected. Turn Socket on.")
-        rf_handler.turn_socket_on(2, "rpi_rf")
-    elif payload == "high" or n_level >= 80:
-        logger.info("Battery high detected. Turn socket off.")
-        #rf_handler.turn_socket_off(2, "subprocess")
-        rf_handler.turn_socket_off(2, "rpi_rf")
 
 def message_to_db(msg):
     curr_time = datetime.now()
     payload = msg.payload.decode("utf-8")
     sql_data.add_mqtt_to_db(curr_time, msg.topic, payload)
+
+    if "temperature" in payload and "humidity" in payload and "pressure" in payload:
+        room_data = dict([value.split('=') for value in payload.split(',')])
+        try:
+            temp = str(float(room_data['temperature']) - 4)
+        except:
+            temp = room_data['temperature'] 
+        sql_data.add_room_data_to_db(curr_time, temp, room_data['humidity'], 0, room_data['pressure'])
     logger.debug("%s: %s", msg.topic, payload)
 
 def main():

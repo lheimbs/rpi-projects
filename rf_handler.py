@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 
+import sys
+import argparse
 import time
 import logging
 import subprocess
 from rpi_rf import RFDevice
+import time
 
-GPIO_PIN = 4
+GPIO_PIN = 20
 CODES = {
     1: {"name": "pc",     "on": 1131857, "off": 1131860},
     2: {"name": "tablet", "on": 1134929, "off": 1134932},
@@ -63,12 +66,36 @@ def send_code(socketnr, code):
 
 
 if __name__ == "__main__":
-    logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
-    turn_socket_on(3, "subprocess")
-    time.sleep(2)
-    turn_socket_off(3, "subprocess")
-    time.sleep(2)
-    turn_socket_on(3, "rpi_rf")
-    time.sleep(2)
-    turn_socket_off(3, "rpi_rf")
+    logging.basicConfig(level=logging.DEBUG)
+    logger.debug("Script called as main")
+
+    parser = argparse.ArgumentParser(description="Optional Socket Control")
+    parser.add_argument('-s', '--socket', default=0, type=int, choices=CODES, help="Socket number thats being controlled.")
+    parser.add_argument('-c', '--cmd', default='on', choices=['on', 'off'], help="Turn socket on or off.")
+
+    args = parser.parse_args()
+    logger.debug("Arguments: socket=%s, command=%s", args.socket, args.cmd)
+
+
+
+    if args.socket:
+        if args.cmd == 'on':
+            turn_socket_on(args.socket, "rpi_rf")
+        else:
+            turn_socket_off(args.socket, "rpi_rf")
+
+    sys.exit()
+    print(123)
+
+    #cmd = sys.argv[1] if len(sys.argv) > 1 else ""
+    #if cmd == "
+    
+    
+    #turn_socket_on(3, "subprocess")
+    #time.sleep(2)
+    #turn_socket_off(3, "subprocess")
+    #time.sleep(2)
+    #turn_socket_on(2, "rpi_rf")
+    #time.sleep(2)
+    #turn_socket_on(1, "rpi_rf")
+

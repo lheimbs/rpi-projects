@@ -1,15 +1,17 @@
 #!/home/pi/projects/rpi-projects/venv/bin/python3
 # coding=utf-8
-from flask import Flask, send_from_directory
-from functools import reduce
+
 import tablib
-import os, csv, datetime
+import os
+import csv
+import datetime
 import dash
 import dash_html_components as html
 import dash_core_components as dcc
+from functools import reduce
+from flask import Flask, send_from_directory
 from dash.dependencies import Input, Output
 
-#app = Flask(__name__)
 FILE_FOLDER = os.path.join(os.sep, 'home', 'pi', 'log')
 RESULT_FILE = 'results.csv' 
 

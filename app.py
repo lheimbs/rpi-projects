@@ -2,16 +2,18 @@
 #!coding=utf-8
 
 import os
-from datetime import datetime
 import pandas
 import dash
 import dash_daq as daq
 import dash_core_components as dcc
 import dash_html_components as html
-from dash.dependencies import Input, Output
 import dash_table
 import scipy.signal as signal
+
+from math import ceil
+from datetime import datetime
 from flask import Flask
+from dash.dependencies import Input, Output
 
 import pi_data
 import sql_data
@@ -43,16 +45,18 @@ EMPTY_GRAPH = {
 def app_layout():
     return html.Div(
         [
+            # store site's settings
+            #dcc.Store(id='local', storage_type='local'),
             # header
             html.Div(
                 [
-                    html.H2("HOME CONTROL DASHBOARD", className="app__header__title")
+                    html.H4("HOME CONTROL DASHBOARD", className="app__header__title")
                 ],
                 className="app__header"
             ),
             dcc.Tabs(
                 id="main-tabs",
-                value="temp-tab",
+                value="data-tab",
                 parent_className='custom__main__tabs',
                 className='custom__main__tabs__container',
                 children=[
@@ -63,8 +67,8 @@ def app_layout():
                         selected_className='custom__main__tab____selected',
                     ),
                     dcc.Tab(
-                        label="Temperature",
-                        value="temp-tab",
+                        label="Data",
+                        value="data-tab",
                         className='custom__main__tab',
                         selected_className='custom__main__tab____selected',
                     ),
@@ -84,75 +88,122 @@ def app_layout():
         className="app__container",
     )
 
-def layout_temp():
+def layout_data():
     return html.Div(
         [
-            html.Div(
-                [
-                    # curent temperature
-                    html.Div(
-                        id="current-temp",
-                        className="temp__current",
+            dcc.Tabs(
+                id="data-main-tabs",
+                value="data-overview-tab",
+                parent_className='custom__main__tabs',
+                className='custom__main__tabs__container',
+                children=[
+                    dcc.Tab(
+                        label="Overview",
+                        value="data-overview-tab",
+                        className='custom__main__sub__tab',
+                        selected_className='custom__main__sub__tab____selected',
                     ),
-                    html.Div(
-                        [
-                            html.H6("Last 24 hours", className="temp__day__title title__center"),
-                            dcc.Graph(
-                                id="day-temp-graph",
-                                figure=EMPTY_GRAPH,
-                                config={
-                                    'staticPlot': True
-                                },
-                                className="graph",
-                            ),
-                            dcc.Interval(
-                                id="day-temp-update",
-                                interval=int(GRAPH_INTERVAL),
-                                n_intervals=0,
-                            ),
-                        ],
-                        className="temp__day",
-                    )
-                ],
-                className="temp__curr__day",
+                    dcc.Tab(
+                        label="Graph",
+                        value="data-graph-tab",
+                        className='custom__main__sub__tab',
+                        selected_className='custom__main__sub__tab____selected',
+                    ),
+                    #dcc.Tab(
+                    #    label="Settings",
+                    #    value="data-settings-tab",
+                    #    className='custom__main__sub__tab',
+                    #    selected_className='custom__main__sub__tab____selected',
+                    #),
+                ]
             ),
             html.Div(
-                [
-                    html.H6("History", id="temp-hist-item", className="title__center"),
-                    dcc.DatePickerRange(
-                        id="temp-history-date-picker",
-                        start_date_placeholder_text="Start Period",
-                        end_date_placeholder_text="End Period",
-                        #minimum_nights=1,
-                        display_format='DD MM Y',
-                        month_format='MM YYYY',
-                        day_size=35,
-                        first_day_of_week=1,
-                        persistence=True,
-                        persistence_type='session',
-                        updatemode='bothdates',
-                        with_full_screen_portal=True,
-                        className="temp__hist__item",
-                    ),
-                    dcc.Loading(id="loading-1", children=[
-                        dcc.Graph(
-                            id="temp-history-graph",
-                            figure=EMPTY_GRAPH,
-                            config={
-                                        'staticPlot': False,
-                                        'showSendToCloud': False,
-                                        'showLink': False,
-                                        'displaylogo': False,
-                                        'modeBarButtonsToRemove': ['sendDataToCloud', 'hoverClosestCartesian', 'hoverCompareCartesian', 'zoom3d', 'pan3d', 'orbitRotation', 'tableRotation', 'handleDrag3d', 'resetCameraDefault3d', 'resetCameraLastSave3d', 'hoverClosest3d; (Geo) zoomInGeo', 'zoomOutGeo', 'resetGeo', 'hoverClosestGeo', 'hoverClosestGl2d', 'hoverClosestPie', 'toggleSpikelines', 'toImage'],
-                                    },
-                            className="temp__hist__item graph",
-                        )
-                    ], type="default"),
-                ],
-                className="temp__hist"
+                id="data-tabs-content",
+                className="app__tab__content"
             ),
         ],
         className="app__temp",
+    )
+
+def layout_data_overview():
+    return html.Div(
+        [
+            # curent temperature
+            dcc.Checklist(
+                id="overview-values",
+                options=[
+                    {'label': 'Temperature', 'value': 'temperature'},
+                    {'label': 'Humidity', 'value': 'humidity'},
+                    {'label': 'Pressure', 'value': 'pressure'},
+                    {'label': 'Altitude', 'value': 'altitude', 'disabled': True},
+                    {'label': 'Brightness', 'value': 'brightness'},
+                ],
+                value=['temperature', 'humidity', 'pressure'],
+                labelStyle={'display': 'inline-block'},
+                persistence_type='memory',
+            ),
+            html.Div(
+                id="current-data",
+                className="data__current",
+            ),
+            html.Div(
+                [
+                    html.H6("Last 24 hours", className="temp__day__title title__center"),
+                    dcc.Graph(
+                        id="day-temp-graph",
+                        figure=EMPTY_GRAPH,
+                        config={
+                            'staticPlot': True
+                        },
+                        className="graph",
+                    ),
+                ],
+                className="temp__day",
+            ),
+            dcc.Interval(
+                id="day-temp-update",
+                interval=int(GRAPH_INTERVAL),
+                n_intervals=0,
+            ),
+        ],
+        className="temp__curr__day",
+    )
+
+def layout_data_graph():
+    return html.Div(
+        [
+            html.H6("History Graph", id="temp-hist-item", className="title__center"),
+            dcc.DatePickerRange(
+                id="temp-history-date-picker",
+                start_date_placeholder_text="Start Period",
+                end_date_placeholder_text="End Period",
+                #minimum_nights=1,
+                display_format='DD MM Y',
+                month_format='MM YYYY',
+                day_size=35,
+                first_day_of_week=1,
+                persistence=True,
+                persistence_type='session',
+                updatemode='bothdates',
+                with_full_screen_portal=True,
+                className="temp__hist__item",
+            ),
+            dcc.Loading(id="loading-1", children=[
+                dcc.Graph(
+                    id="temp-history-graph",
+                    figure=EMPTY_GRAPH,
+                    config={
+                                'staticPlot': False,
+                                'showSendToCloud': False,
+                                'showLink': False,
+                                'displaylogo': False,
+                                'modeBarButtonsToRemove': ['sendDataToCloud', 'hoverClosestCartesian', 'hoverCompareCartesian', 'zoom3d', 'pan3d', 'orbitRotation', 'tableRotation', 'handleDrag3d', 'resetCameraDefault3d', 'resetCameraLastSave3d', 'hoverClosest3d; (Geo) zoomInGeo', 'zoomOutGeo', 'resetGeo', 'hoverClosestGeo', 'hoverClosestGl2d', 'hoverClosestPie', 'toggleSpikelines', 'toImage'],
+                            },
+                    className="temp__hist__item graph",
+                )
+            ], type="default"),
+        ],
+        className="temp__hist"
     )
 
 def layout_general():
@@ -359,53 +410,87 @@ APP.layout = app_layout
 def render_content(tab):
     if tab == 'general-tab':
         layout = layout_general()
-    elif tab == 'temp-tab':
-        layout = layout_temp()
-    elif tab == 'mqtt-tab':
+    elif tab == 'data-tab':
+        layout = layout_data()
+    #elif tab == 'mqtt-tab':
+    else:
         layout = layout_mqtt()
     return layout
 
 
-@APP.callback(Output('current-temp', 'children'),
-              [Input('day-temp-update', 'n_intervals')])
-def update_current_temp(interval):
-    last_temp = sql_data.get_last_temp()
-    min_temp = sql_data.get_min_temp()
-    max_temp = sql_data.get_max_temp()
+@APP.callback(Output('data-tabs-content', 'children'),
+              [Input('data-main-tabs', 'value')])
+def render_content(tab):
+    if tab == 'data-overview-tab':
+        layout = layout_data_overview()
+    elif tab == 'data-graph-tab':
+        layout = layout_data_graph()
+    elif tab == 'data-settings-tab':
+        layout = html.Div("Settings")
+    return layout
 
-    temp_range = (max_temp-min_temp)/2
 
-    return [
-        html.H6("Current Temperature", className="temp__current__title title__center"),
-        html.Div(
+@APP.callback(Output('current-data', 'children'),
+              [Input('day-temp-update', 'n_intervals'),
+               Input('overview-values', 'value')])
+def update_current_temp(interval, overview_values):
+    gauges = []
+    for value in overview_values:
+        last = sql_data.get_last_value(value)
+        min_val = round(sql_data.get_min_value(value))
+        max_val = ceil(sql_data.get_max_value(value))
+        step = round((max_val - min_val) / 3)
+        if value == 'temperature':
+            unit="°C"
+        elif value == 'pressure':
+            unit="Pa"
+        elif value == 'humidity':
+            unit="%"
+        elif value == 'altitude':
+            unit="m"
+        elif value == 'brightness':
+            unit="lx"
+        else:
+            unit=""
+
+        gauges.append(html.Div(
             [
-                daq.Gauge(
-                    id="current-temp-gauge",
-                    value=last_temp,
-                    min=10,
-                    max=30,
-                    showCurrentValue=True,
-                    units="°C",
-                    #scale={'interval': 1, 'labelInterval': 2},
-                    color={
-                        "gradient":True,
-                        "ranges":{
-                            "blue":[10, 18],
-                            "green":[18, 23],
-                            "red":[23, 30]
-                        }
-                    },
+                html.H6(f"Current {value.capitalize()}", className="temp__current__title title__center"),
+                html.Div(
+                    [
+                        daq.Gauge(
+                            id="current-temp-gauge",
+                            value=last,
+                            min=min_val,
+                            max=max_val,
+                            showCurrentValue=True,
+                            units=unit,
+                            #scale={'start': min_val, 'interval': 1, 'labelInterval': 2},
+                            color={
+                                "gradient":True,
+                                "ranges":{
+                                    "blue":[min_val, min_val + step],
+                                    "green":[min_val + step, max_val - step],
+                                    "red":[max_val - step, max_val]
+                                }
+                            },
+                        )
+                    ],
+                    className="temp__current__gauge",
                 )
             ],
-            className="temp__current__gauge",
-        )
-    ]
+            #className="overview__current__gauges"
+        ))
+    return gauges
+
+
 
 
 @APP.callback(Output('day-temp-graph', 'figure'),
-              [Input('day-temp-update', 'n_intervals')])
-def update_day_temp_graph(interval):
-    day_data = sql_data.get_day_temp_pandas()
+              [Input('day-temp-update', 'n_intervals'),
+               Input('overview-values', 'value')])
+def update_day_temp_graph(interval, overview_values):
+    day_data = sql_data.get_day_temp()
     day_data = day_data.sort_values('datetime')
 
     # Design of Buterworth filter
@@ -437,7 +522,7 @@ def update_day_temp_graph(interval):
             },
             'margin': {'l': 30, 'b': 30, 'r': 10, 't': 10},
             #'width': '100%',
-            'height': '250',
+            'height': '300',
         }
     }
 

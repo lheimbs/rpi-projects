@@ -3,12 +3,22 @@ body {
     background-color: #111111;
 }
 
+/*
+div {
+    border: 1px solid #000000;
+}
+*/
+
 h6 {
     margin-top: 0;
 }
 
 .app__container {
-    margin: 3% 5%;
+    margin-top: 1%;
+    margin-left: 5%;
+    margin-right: 5%;
+    margin-bottom: 3%;
+    /*margin: 3% 5%;*/
 }
 
 .app__content {
@@ -20,7 +30,7 @@ h6 {
 .app__header {
     display: flex;
     justify-content: center;
-    margin-bottom: 2rem;
+    margin-bottom: 2%;
     /*color: #fff;*/
     /* border: 1px solid black; */
 }
@@ -31,8 +41,11 @@ h6 {
 }
 
 .app__tab__content {
-    margin: 2% 2%;
-    /* border: 1px solid black; */
+    /* margin-top: 0;
+    margin-left: 5%;
+    margin-right: 5%;
+    margin-bottom: 3%;
+    border: 1px solid black; */
 }
 
 .app__temp {
@@ -126,8 +139,7 @@ h6 {
     margin: 1%;
 }
 
-
-.temp__curr__day {
+.overview__current__gauges {
     display: flex;
     flex-direction: row;
     justify-content: center;
@@ -135,17 +147,25 @@ h6 {
     margin: 5px;
 }
 
-.temp__day {
-    flex-grow: 4;
+.temp__curr__day {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
 
-    margin: 10px;
+    margin: 5px;
 }
 
-.temp__current {
-    flex-grow: 1;
+.temp__day {
+    margin: 1%;
+}
 
-    width: 230px;
-    margin: 10px;
+.data__current {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-between;
+    padding-top: 1%;
+    padding-left: 2%;
+    padding-right: 2%;
 }
 
 .title__center {
@@ -159,6 +179,10 @@ h6 {
 .mqtt__data {
 
 }
+
+
+
+
 
 /* #table, #table, .dash-header {
     color: #7FDBFF;
@@ -184,7 +208,7 @@ h6 {
     }
     .app__header__title {
         font-size: 1.5em;
-        padding-top: 15px;
+        padding-top: 1%;
     }
 
     .general__services__states {

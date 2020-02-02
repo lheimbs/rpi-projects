@@ -7,6 +7,14 @@ GraduatedBar - background
     border: 1px solid #333333;
 }
 
+/*
+Gauge height
+*/
+.sc-iwsKbI {
+    padding: 0px;
+    height: 220px;
+}
+
 
 /*
 DateMonthPicker

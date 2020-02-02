@@ -10,50 +10,58 @@ DATABASE = 'data.db'
 TABLE = 'room-data'
 DATETIME = 'datetime'
 TEMPERATURE = 'temperature'
-MAX_TEMP = 50
-MIN_TEMP = -20
-LAST_TEMP = 0
+MAX_VAL = 9999
+MIN_VAL = -9999
+LAST_VAL = 0
 MAX_DATETIME = pandas.Timestamp.now()
 MIN_DATETIME = pandas.Timestamp("2019-07-01-T00")
+VALUE_TYPES = ['temperature', 'humidity', 'pressure', 'altitude', 'brightness']
 
 logger = logging.getLogger(__name__)
 
-def get_max_temp():
-    max_temp = MAX_TEMP
+def get_max_value(value_type):
+    if value_type not in VALUE_TYPES:
+        raise ValueError(f"Invalid value '{value_type}'. Expected one of: {VALUE_TYPES}")
+    max_val = MAX_VAL
     with sqlite3.connect(DATABASE) as connection:
         cursor = connection.cursor()
-        logger.info("Query database for max value of column 'temperature' from table 'room'.")
-        max_temp = cursor.execute("SELECT MAX(temperature) FROM 'room-data'").fetchone()[0]
-    if max_temp < MAX_TEMP:
-        logger.info("Found max temperature: {}.".format(max_temp))
+        logger.info(f"Query database for max value of column {value_type} from table 'room-data'.")
+        max_val = cursor.execute(f"SELECT MAX({value_type}) FROM 'room-data'").fetchone()[0]
+    if max_val < MAX_VAL:
+        logger.info(f"Found max {value_type}: {max_val}")
     else:
-        logger.warning("Max temp could not be found.")
-    return max_temp
+        logger.warning(f"Maximum in {value_type} could not be found.")
+    return max_val
 
 
-def get_min_temp():
-    min_temp = MIN_TEMP
+def get_min_value(value_type):
+    if value_type not in VALUE_TYPES:
+        raise ValueError(f"Invalid value '{value_type}'. Expected one of: {VALUE_TYPES}")
+    min_val = MIN_VAL
     with sqlite3.connect(DATABASE) as connection:
         cursor = connection.cursor()
-        logger.info("Query database for min value of column 'temperature' from table 'room'.")
-        min_temp = cursor.execute("SELECT MIN(temperature) FROM 'room-data'").fetchone()[0]
-    if min_temp > MIN_TEMP:
-        logger.info("Found min temperature: {}.".format(min_temp))
+        logger.info(f"Query database for min value of column {value_type} from table 'room-data'.")
+        min_val = cursor.execute(f"SELECT MIN({value_type}) FROM 'room-data'").fetchone()[0]
+    if min_val < MIN_VAL:
+        logger.info(f"Found min {value_type}: {min_val}")
     else:
-        logger.warning("Max temp could not be found.")
-    return min_temp
+        logger.warning(f"Minimum in {value_type} could not be found.")
+    return min_val
 
-def get_last_temp():
-    last = LAST_TEMP
+
+def get_last_value(value_type):
+    if value_type not in VALUE_TYPES:
+        raise ValueError(f"Invalid value '{value_type}'. Expected one of: {VALUE_TYPES}")
+    last_val = LAST_VAL
     with sqlite3.connect(DATABASE) as connection:
         cursor = connection.cursor()
-        logger.info("Query database for newest value of column 'temperature' from table 'room', ordered by column 'datetime'.")
-        last = cursor.execute("SELECT temperature FROM 'room-data' ORDER BY datetime DESC LIMIT 1").fetchone()[0]
-    if last > LAST_TEMP:
-        logger.info("Found last temperature: {}.".format(last))
+        logger.info(f"Query database for newest value of column '{value_type}' from table 'room-data', ordered by column 'datetime'.")
+        last_val = cursor.execute(f"SELECT {value_type} FROM 'room-data' ORDER BY datetime DESC LIMIT 1").fetchone()[0]
+    if last_val > LAST_VAL:
+        logger.info(f"Found last value from {value_type}: {last_val}")
     else:
         logger.warning("Max temp could not be found.")
-    return last
+    return last_val
 
 def get_max_datetime():
     max_datetime = MAX_DATETIME
@@ -62,7 +70,7 @@ def get_max_datetime():
             detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
         ) as connection:
         cursor = connection.cursor()
-        logger.info("Query database for max value of column 'datetime' from table 'room'.")
+        logger.info("Query database for max value of column 'datetime' from table 'room-data'.")
         max_datetime = cursor.execute("SELECT datetime FROM 'room-data' ORDER BY datetime DESC LIMIT 1").fetchone()[0]
 
     if max_datetime < MAX_DATETIME:
@@ -75,7 +83,7 @@ def get_min_datetime():
     min_datetime = MIN_DATETIME
     with sqlite3.connect(DATABASE, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as connection:
         cursor = connection.cursor()
-        logger.info("Query database for min value of column 'datetime' from table 'room'.")
+        logger.info("Query database for min value of column 'datetime' from table 'room-data'.")
         min_datetime = pandas.Timestamp(cursor.execute("SELECT MIN(datetime) FROM 'room-data'").fetchone()[0])
 
     if min_datetime > MIN_DATETIME:
@@ -84,40 +92,39 @@ def get_min_datetime():
         logger.warning("Max datetime could not be found.")
     return min_datetime
 
-def get_day_temp(start_datetime):
-    data = []
-    query_datetime = start_datetime - timedelta(hours=24)
-    with sqlite3.connect(DATABASE,
-                         detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
-                        ) as connection:
-        cursor = connection.cursor()
-        logger.info("Query database for temperature-data of the last 24 hours.")
-        data = cursor.execute("SELECT datetime, temperature FROM 'room-data' WHERE datetime > ?", 
-                              (query_datetime, )).fetchall()
 
-    if data:
-        logger.info("Successfully recieved {} Values.".format(len(data)))
-    else:
-        logger.warning("Could not get any values.")
-    return data
-
-def get_day_temp_pandas():
+def get_day_temp():
     data = None
+    max_datetime = get_max_datetime()
+    query_datetime = max_datetime - timedelta(hours=24)
     
     with sqlite3.connect(
         DATABASE, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
-
         cursor = connection.cursor()
-        logger.info("Query database for max value of column 'datetime' from table 'room'.")
-        max_datetime = cursor.execute("SELECT datetime FROM 'room-data' ORDER BY datetime DESC LIMIT 1").fetchone()[0]
-        query_datetime = max_datetime - timedelta(hours=24)
-
         logger.info("Query database for temperature-data of the last 24 hours using pandas read_sql().")
         data = pandas.read_sql("SELECT datetime, temperature FROM 'room-data' WHERE datetime > ?", params=(query_datetime, ), parse_dates=['datetime'], con=connection)
         logger.info("Successfully queried temperature data from the last 24hrs")
-
     return data
+
+
+def get_day_data(values):
+    for value in values:
+        if value not in VALUE_TYPES:
+            raise ValueError(f"Invalid value '{value}'. Expected one of: {VALUE_TYPES}")
+    data = None
+    max_datetime = get_max_datetime()
+    query_datetime = max_datetime - timedelta(hours=24)
+    
+    with sqlite3.connect(
+        DATABASE, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
+    ) as connection:
+        cursor = connection.cursor()
+        logger.info(f"Query database for {', '.join(values)} of the last 24 hours using pandas read_sql().")
+        data = pandas.read_sql(f"SELECT datetime, {', '.join(values)} FROM 'room-data' WHERE datetime > ?", params=(query_datetime, ), parse_dates=['datetime'], con=connection)
+        logger.info("Successfully queried temperature data from the last 24hrs")
+    return data
+
 
 def get_temp_history(start_time, end_time):
     data = None
@@ -138,6 +145,7 @@ def get_temp_history(start_time, end_time):
             datetime.strftime(end_time, '%d-%m-%Y'),
         ))
     return data
+
 
 def csv_to_db(filepath):
     db = 'data.db'

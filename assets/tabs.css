@@ -1,7 +1,9 @@
+
 .custom__main__tab {
     border-bottom: 1px solid #d6d6d6 !important;
     padding: 6px !important;
     font-weight: bold !important;
+    font-size: 150%;
     background-color: #111111 !important;
 }
 
@@ -9,6 +11,21 @@
     border-top: 1px solid #d6d6d6 !important;
     border-bottom: 1px solid #d6d6d6 !important;
     background-color: #444444 !important;
-    color: white !important;
+    color: #7FDBFF !important;
+    padding: 6px !important;
+}
+
+.custom__main__sub__tab {
+    border-top: 0px !important;
+    border-bottom: 1px solid #d6d6d6 !important;
+    padding: 6px !important;
+    background-color: #111111 !important;
+}
+
+.custom__main__sub__tab____selected {
+    border-top: 0px !important;
+    border-bottom: 1px solid #d6d6d6 !important;
+    background-color: #444444 !important;
+    color: #7FDBFF !important;
     padding: 6px !important;
 }
