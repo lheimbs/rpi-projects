@@ -14,7 +14,7 @@ h6 {
 }
 
 .app__container {
-    margin-top: 1%;
+    margin-top: 0%;
     margin-left: 5%;
     margin-right: 5%;
     margin-bottom: 3%;
@@ -30,8 +30,8 @@ h6 {
 .app__header {
     display: flex;
     justify-content: center;
-    margin-bottom: 2%;
-    /*color: #fff;*/
+    /*margin-bottom: 2%;
+    color: #fff;*/
     /* border: 1px solid black; */
 }
 
@@ -219,6 +219,12 @@ h6 {
     .general__services {
         display: flex;
         flex-direction: column;
+    }
+
+    .data__current {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
     }
 
     .temp__curr__day {
