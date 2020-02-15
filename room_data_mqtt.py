@@ -40,7 +40,7 @@ def message_to_db(msg):
     payload = msg.payload.decode("utf-8")
     sql_data.add_mqtt_to_db(curr_time, msg.topic, payload)
 
-    if "temperature" in payload and "humidity" in payload and "pressure" in payload:
+    if "temperature" in payload and "humidity" in payload and "pressure" in payload and "temperature=nan" not in payload and 'nan' not in payload:
         room_data = dict([value.split('=') for value in payload.split(',')])
         try:
             temp = str(float(room_data['temperature']) - 4)

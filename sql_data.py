@@ -22,11 +22,15 @@ logger = logging.getLogger(__name__)
 def get_max_value(value_type):
     if value_type not in VALUE_TYPES:
         raise ValueError(f"Invalid value '{value_type}'. Expected one of: {VALUE_TYPES}")
-    max_val = MAX_VAL
     with sqlite3.connect(DATABASE) as connection:
         cursor = connection.cursor()
         logger.info(f"Query database for max value of column {value_type} from table 'room-data'.")
         max_val = cursor.execute(f"SELECT MAX({value_type}) FROM 'room-data'").fetchone()[0]
+    if max_val == 'nan':
+        return MAX_VAL
+    else:
+        max_val = float(max_val)
+
     if max_val < MAX_VAL:
         logger.info(f"Found max {value_type}: {max_val}")
     else:
@@ -42,6 +46,11 @@ def get_min_value(value_type):
         cursor = connection.cursor()
         logger.info(f"Query database for min value of column {value_type} from table 'room-data'.")
         min_val = cursor.execute(f"SELECT MIN({value_type}) FROM 'room-data'").fetchone()[0]
+    if min_val == 'nan':
+        return MIN_VAL
+    else:
+        min_val = float(min_val)
+
     if min_val < MIN_VAL:
         logger.info(f"Found min {value_type}: {min_val}")
     else:
