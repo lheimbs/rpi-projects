@@ -48,16 +48,15 @@ h6 {
     border: 1px solid black; */
 }
 
-.app__temp {
-    /*display: flex;
-    flex-direction: column;
-    flex-grow: 1;*/
-    /*border: 1px solid black;*/
-}
-
 .app__general {
 
 }
+
+
+.settings__panel {
+
+}
+
 
 .general__services {
     display: flex;
@@ -123,10 +122,10 @@ h6 {
 /*
     Temperature Design
     Layout:
-    -div app__temp
-        -div temp__curr__day
+    -div 
+        -div data__overview
             -div temp__current
-            -div temp__day
+            -div data__overview__day
         -div temp__hist
 
 */
@@ -135,7 +134,7 @@ h6 {
     margin: 5px;
 }
 
-.temp__hist__item {
+.data__hist__item {
     margin: 1%;
 }
 
@@ -147,7 +146,7 @@ h6 {
     margin: 5px;
 }
 
-.temp__curr__day {
+.data__overview {
     display: flex;
     flex-direction: column;
     justify-content: center;
@@ -155,7 +154,15 @@ h6 {
     margin: 5px;
 }
 
-.temp__day {
+
+.data__current {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+}
+
+
+.data__overview__day {
     margin: 1%;
 }
 
@@ -172,16 +179,40 @@ h6 {
     text-align: center;
 }
 
-.app__mqtt {
+.mqtt__live {
+    margin: 3px;
+}
+
+.mqtt__live__control {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    margin: 1%;
+}
+
+/*.mqtt__live__input {
 
 }
 
-.mqtt__data {
-
+.mqtt__live__start__stop__buttons {
+    
 }
 
+.start__stop__button {
+    
+}
+*/
 
+.mqtt__settings__panel {
+    display: flex;
+    flex-direction: row;
+    justify-content: space-around;
+    margin: 1%;
+}
 
+.mqtt__topic__select {
+    margin-bottom: 6px;
+}
 
 
 /* #table, #table, .dash-header {
@@ -194,11 +225,6 @@ h6 {
         display: block;
     }
     .app__header {
-        display: flex;
-        flex-direction: column;
-    }
-    .app__temp {
-        justify-content: center;
         display: flex;
         flex-direction: column;
     }
@@ -227,7 +253,7 @@ h6 {
         justify-content: center;
     }
 
-    .temp__curr__day {
+    .data__overview {
         display: flex;
         flex-direction: column;
         justify-content: center;

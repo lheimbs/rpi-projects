@@ -46,7 +46,7 @@ def handle_battery_level(msg):
     if payload == "low" or (0 < n_level <= 20):
         logger.info("Battery low detected. Turn Socket on.")
         rf_handler.turn_socket_on(2, "rpi_rf")
-    elif payload == "high" or n_level >= 80:
+    elif payload == "full" or n_level >= 80:
         logger.info("Battery high detected. Turn socket off.")
         #rf_handler.turn_socket_off(2, "subprocess")
         rf_handler.turn_socket_off(2, "rpi_rf")

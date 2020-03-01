@@ -9,22 +9,33 @@ import dash_core_components as dcc
 import dash_html_components as html
 import dash_table
 import scipy.signal as signal
+import paho.mqtt.client as mqtt
 
 from math import ceil
+from collections import deque
 from datetime import datetime
 from flask import Flask
 from dash.dependencies import Input, Output
 
 import pi_data
 import sql_data
+import mqtt_live
 
-
+B_MQTT_BUTTONS = True
 GRAPH_INTERVAL = os.environ.get("GRAPH_INTERVAL", 60000)
 STATS_INTERVAL = os.environ.get("STATS_INTERVAL", 5000)
+MQTT_CLIENT = mqtt.Client("Dashboard")
+MQTT_CLIENT.connected_flag = False
+MQTT_CLIENT.enable_logger()
+QUEUE = deque(maxlen=20)
+N_BUTTON_HIST = 0
 COLORS = {
     'foreground': '#123456',
+    'main': '#7FDBFF',#4491ed',
     'background': '#111111',
     'light-background': '#222222',
+    'red': 'red',
+    'green': 'green',
 }
 EMPTY_GRAPH = {
     'data': [ { 'x': [], 'y': [], }, ],
@@ -41,6 +52,7 @@ EMPTY_GRAPH = {
         'height': '250',
     }
 }
+
 
 def app_layout():
     return html.Div(
@@ -122,7 +134,6 @@ def layout_data():
                 className="app__tab__content"
             ),
         ],
-        className="app__temp",
     )
 
 def layout_data_overview():
@@ -148,9 +159,9 @@ def layout_data_overview():
             ),
             html.Div(
                 [
-                    html.H6("Last 24 hours", className="temp__day__title title__center"),
+                    html.H6("Last 24 hours", className="data__overview__day__title title__center"),
                     dcc.Graph(
-                        id="day-temp-graph",
+                        id="day-data-graph",
                         figure=EMPTY_GRAPH,
                         config={
                             'staticPlot': True
@@ -158,23 +169,22 @@ def layout_data_overview():
                         className="graph",
                     ),
                 ],
-                className="temp__day",
+                className="data__overview__day",
             ),
             dcc.Interval(
-                id="day-temp-update",
+                id="data-overview-update",
                 interval=int(GRAPH_INTERVAL),
                 n_intervals=0,
             ),
         ],
-        className="temp__curr__day",
+        className="data__overview",
     )
 
 def layout_data_graph():
     return html.Div(
         [
-            html.H6("History Graph", id="temp-hist-item", className="title__center"),
             dcc.DatePickerRange(
-                id="temp-history-date-picker",
+                id="data-history-date-picker",
                 start_date_placeholder_text="Start Period",
                 end_date_placeholder_text="End Period",
                 #minimum_nights=1,
@@ -186,11 +196,11 @@ def layout_data_graph():
                 persistence_type='session',
                 updatemode='bothdates',
                 with_full_screen_portal=True,
-                className="temp__hist__item",
+                className="data__hist__item",
             ),
             dcc.Loading(id="loading-1", children=[
                 dcc.Graph(
-                    id="temp-history-graph",
+                    id="data-history-graph",
                     figure=EMPTY_GRAPH,
                     config={
                                 'staticPlot': False,
@@ -199,7 +209,7 @@ def layout_data_graph():
                                 'displaylogo': False,
                                 'modeBarButtonsToRemove': ['sendDataToCloud', 'hoverClosestCartesian', 'hoverCompareCartesian', 'zoom3d', 'pan3d', 'orbitRotation', 'tableRotation', 'handleDrag3d', 'resetCameraDefault3d', 'resetCameraLastSave3d', 'hoverClosest3d; (Geo) zoomInGeo', 'zoomOutGeo', 'resetGeo', 'hoverClosestGeo', 'hoverClosestGl2d', 'hoverClosestPie', 'toggleSpikelines', 'toImage'],
                             },
-                    className="temp__hist__item graph",
+                    className="data__hist__item graph",
                 )
             ], type="default"),
         ],
@@ -321,17 +331,139 @@ def layout_general():
     )
 
 def layout_mqtt():
-    data = sql_data.get_mqtt_messages()
-    print(data)
     return html.Div(
         [
-            html.H4("All MQTT Messages:"),
-            dash_table.DataTable(
-                id='table',
-                columns=[{"name": i, "id": i} for i in data.columns],
-                data=data.to_dict('records'),
+            dcc.Tabs(
+                id="mqtt-main-tabs",
+                value="mqtt-messages-tab",
+                parent_className='custom__main__tabs',
+                className='custom__main__tabs__container',
+                children=[
+                    dcc.Tab(
+                        label="Messages",
+                        value="mqtt-messages-tab",
+                        className='custom__main__sub__tab',
+                        selected_className='custom__main__sub__tab____selected',
+                    ),
+                    dcc.Tab(
+                        label="Live",
+                        value="mqtt-live-tab",
+                        className='custom__main__sub__tab',
+                        selected_className='custom__main__sub__tab____selected',
+                    ),
+                ]
+            ),
+            html.Div(
+                id="mqtt-tabs-content",
+                className="app__tab__content"
+            ),
+        ],
+    )
 
+def layout_mqtt_messages():
+    topics = sql_data.get_mqtt_topics()
+    return html.Div(
+        [
+            html.Div(
+                children=[
+                    html.H6("Select topics:"),
+                    dcc.Checklist(
+                        id="mqtt-select-topics",
+                        value=['tablet/shield/battery'] if 'tablet/shield/battery' in topics else [],
+                        labelStyle = {'display': 'inline-block'},
+                        options=[{'label': topic, 'value': topic} for topic in sql_data.get_mqtt_topics()],
+                        className="mqtt__topic__select",
+                    ),
+                ],
+                className='mqtt__settings__panel',
+            ),
+            dcc.Loading(id="loading-1", children=[
+                dash_table.DataTable(
+                    id='table',
+                    columns=[
+                        {"name": 'Date/Time', "id": 'datetime'}, 
+                        {"name": 'Topic', "id": 'topic'},
+                        {"name": 'Payload', "id": 'payload'} ,   
+                    ],
+                    data=[],#data.to_dict('records'),
+
+                    page_action="native",
+                    page_current= 0,
+                    page_size= 20,
+                    style_as_list_view=True,
+                    style_header={
+                        'backgroundColor': COLORS['light-background'],
+                        'fontWeight': 'bold'
+                    },
+                    style_cell={
+                        'padding': '5px',
+                        'textAlign': 'center',
+                        'backgroundColor': COLORS['background'],
+                    },
+                ),
+            ], type="default"),
+        ],
+        className="mqtt__messages",
+    )
+
+def layout_mqtt_live():
+    return html.Div(
+        children=[
+            html.Div(
+                children=[
+                    html.Div(
+                        [
+                            html.Datalist(
+                                id='mqtt-topic-recent',
+                                children=[html.Option(value=val) for val in sql_data.get_mqtt_topics()],
+                            ),
+                            dcc.Input(
+                                id='mqtt-topic-input',
+                                #debounce=True,
+                                list='mqtt-topic-recent',
+                                placeholder="Topic...",
+                                #persistence=True,
+                                #persistence_type='session',
+                                style={
+                                    'backgroundColor': COLORS['light-background'],
+                                    'color': COLORS['main'],
+                                    'border': f"2px solid {COLORS['main']}",
+                                    'border-radius': '4px',
+                                    'padding': '6px 10px',
+                                },
+                            ),
+                            html.Button('Subscribe', id='mqtt-live-subscribe'),
+                            html.Div(id='mqtt-live-sub-status'),
+                        ],
+                        className='mqtt__live__input'
+                    ),
+                    html.Div(
+                        [
+                            html.Button('Start', id='mqtt-live-start', disabled=False, className='start__stop__button'),
+                            html.Button('Stop', id='mqtt-live-stop', disabled=True, className='start__stop__button'),
+                        ], 
+                        className='mqtt__live__start__stop__buttons'
+                    )
+                ],
+                className="mqtt__live__control",
+            ),
+            dcc.Interval(id='mqtt-live-interval', interval=500),
+            dash_table.DataTable(
+                id='live-table',
+                columns=[
+                    {"name": 'Date', "id": 'date', 'selectable': False},
+                    {"name": 'Time', "id": 'time'},
+                    {"name": 'Topic', "id": 'topic'},
+                    {"name": 'Payload', "id": 'payload'},
+                    {"name": 'qos', "id": 'qos'},
+                ],
+                data=[],#data.to_dict('records'),
+                editable=False,
+                page_action="native",
+                page_current= 0,
+                page_size= 20,
                 style_as_list_view=True,
+                is_focused=False,
                 style_header={
                     'backgroundColor': COLORS['light-background'],
                     'fontWeight': 'bold'
@@ -341,9 +473,15 @@ def layout_mqtt():
                     'textAlign': 'center',
                     'backgroundColor': COLORS['background'],
                 },
+                style_data_conditional=[
+                    {
+                        'if': {'row_index': 'odd'},
+                        'backgroundColor': COLORS['light-background']
+                    }
+                ],
             ),
         ],
-        className="app__mqtt",
+        className="mqtt__live",
     )
 
 def get_states(sub_color, active_color, load_color):
@@ -404,7 +542,6 @@ APP.config['suppress_callback_exceptions'] = True
 APP.layout = app_layout
 
 
-
 @APP.callback(Output('main-tabs-content', 'children'),
               [Input('main-tabs', 'value')])
 def render_content(tab):
@@ -430,10 +567,22 @@ def render_content(tab):
     return layout
 
 
+@APP.callback(Output('mqtt-tabs-content', 'children'),
+              [Input('mqtt-main-tabs', 'value')])
+def render_content(tab):
+    if tab == 'mqtt-messages-tab':
+        layout = layout_mqtt_messages()
+    elif tab == 'mqtt-live-tab':
+        layout = layout_mqtt_live()
+    elif tab == 'mqtt-settings-tab':
+        layout = html.Div("Settings")
+    return layout
+
+
 @APP.callback(Output('current-data', 'children'),
-              [Input('day-temp-update', 'n_intervals'),
+              [Input('data-overview-update', 'n_intervals'),
                Input('overview-values', 'value')])
-def update_current_temp(interval, overview_values):
+def update_current_data(interval, overview_values):
     gauges = []
     for value in overview_values:
         last = sql_data.get_last_value(value)
@@ -486,10 +635,10 @@ def update_current_temp(interval, overview_values):
 
 
 
-@APP.callback(Output('day-temp-graph', 'figure'),
-              [Input('day-temp-update', 'n_intervals'),
+@APP.callback(Output('day-data-graph', 'figure'),
+              [Input('data-overview-update', 'n_intervals'),
                Input('overview-values', 'value')])
-def update_day_temp_graph(interval, overview_values):
+def update_day_graph(interval, overview_values):
     day_data = sql_data.get_day_temp()
     day_data = day_data.sort_values('datetime')
 
@@ -528,10 +677,10 @@ def update_day_temp_graph(interval, overview_values):
 
 
 @APP.callback(
-    Output('temp-history-graph', 'figure'),
-    [Input('temp-history-date-picker', 'start_date'),
-     Input('temp-history-date-picker', 'end_date')])
-def update_temp_history_graph(start_date, end_date):
+    Output('data-history-graph', 'figure'),
+    [Input('data-history-date-picker', 'start_date'),
+     Input('data-history-date-picker', 'end_date')])
+def update_history_graph(start_date, end_date):
     if start_date is not None and end_date is not None:
         start_date = datetime.strptime(start_date, '%Y-%m-%d')
         end_date = datetime.strptime(end_date, '%Y-%m-%d')
@@ -573,6 +722,98 @@ def update_temp_history_graph(start_date, end_date):
         }
     else:
         return EMPTY_GRAPH
+
+
+
+
+@APP.callback(Output('table', 'data'),
+              [Input('mqtt-select-topics', 'value')])
+def get_table_data(selected_topics):
+    if selected_topics:
+        data = sql_data.get_mqtt_messages_by_topic(selected_topics)
+        return data.to_dict('records')
+    else:
+        return []
+
+
+@APP.callback(Output('mqtt-topic-input', 'style'),
+              [Input('mqtt-topic-input', 'value')])
+def sanitize_topic(topic):
+    if topic:
+        if mqtt_live.sanitize_topic(topic):
+            style = {
+                'backgroundColor': COLORS['light-background'],
+                'color': COLORS['main'],
+                'border': f"2px solid {COLORS['green']}",
+                'border-radius': '4px',
+                'padding': '6px 10px',
+            }
+        else:
+            style = {
+                'backgroundColor': COLORS['light-background'],
+                'color': COLORS['main'],
+                'border': f"2px solid {COLORS['red']}",
+                'border-radius': '4px',
+                'padding': '6px 10px',
+            }
+    else:
+        style = {
+            'backgroundColor': COLORS['light-background'],
+            'color': COLORS['main'],
+            'border': f"2px solid {COLORS['main']}",
+            'border-radius': '4px',
+            'padding': '6px 10px',
+        }
+    return style
+
+
+@APP.callback(Output('mqtt-live-sub-status', 'children'),
+              [Input('mqtt-live-subscribe', 'n_clicks'),
+               Input('mqtt-topic-input', 'value')])
+def subscribe_mqtt_topic(n_clicks, topic):
+    global MQTT_CLIENT, N_BUTTON_HIST
+    
+    ctx = dash.callback_context
+    if not ctx.triggered or not topic or not n_clicks or N_BUTTON_HIST == n_clicks:
+        return ""
+    elif not mqtt_live.sanitize_topic(topic):
+        N_BUTTON_HIST = n_clicks
+        return "Invalid Topic!"
+    elif not MQTT_CLIENT.connected_flag:
+        N_BUTTON_HIST = n_clicks
+        return "Press Start first!"
+    else:
+        N_BUTTON_HIST = n_clicks
+        MQTT_CLIENT.subscribe(topic)
+        return "Subscribed!"
+
+
+@APP.callback([Output('mqtt-live-start', 'disabled'),
+               Output('mqtt-live-stop', 'disabled')],
+              [Input('mqtt-live-start', 'n_clicks'),
+               Input('mqtt-live-stop', 'n_clicks')])
+def toggle_buttons(n_clicksb1, n_clicksb2):
+    global MQTT_CLIENT
+    if dash.callback_context.triggered:
+        context = dash.callback_context.triggered[0]['prop_id'].split('.')[0]
+        if context == 'mqtt-live-start':
+            mqtt_live.mqtt_connect_async(MQTT_CLIENT, QUEUE)
+            return True, False
+        else:
+            MQTT_CLIENT.disconnect()
+            MQTT_CLIENT = mqtt.Client("Dashboard")
+            MQTT_CLIENT.connected_flag = False
+            MQTT_CLIENT.enable_logger()
+            return False, True
+    return True, False
+
+
+@APP.callback(Output('live-table', 'data'),
+              [Input('mqtt-live-interval', 'n_intervals')])
+def render_mqtt_live(interval):
+    return list(QUEUE)
+
+
 
 
 @APP.callback(Output('dashbaord-states', 'children'),

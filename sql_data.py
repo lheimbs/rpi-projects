@@ -31,10 +31,7 @@ def get_max_value(value_type):
     else:
         max_val = float(max_val)
 
-    if max_val < MAX_VAL:
-        logger.info(f"Found max {value_type}: {max_val}")
-    else:
-        logger.warning(f"Maximum in {value_type} could not be found.")
+    logger.info(f"Found max {value_type}: {max_val}")
     return max_val
 
 
@@ -51,10 +48,7 @@ def get_min_value(value_type):
     else:
         min_val = float(min_val)
 
-    if min_val < MIN_VAL:
-        logger.info(f"Found min {value_type}: {min_val}")
-    else:
-        logger.warning(f"Minimum in {value_type} could not be found.")
+    logger.info(f"Found min {value_type}: {min_val}")
     return min_val
 
 
@@ -66,10 +60,8 @@ def get_last_value(value_type):
         cursor = connection.cursor()
         logger.info(f"Query database for newest value of column '{value_type}' from table 'room-data', ordered by column 'datetime'.")
         last_val = cursor.execute(f"SELECT {value_type} FROM 'room-data' ORDER BY datetime DESC LIMIT 1").fetchone()[0]
-    if last_val > LAST_VAL:
-        logger.info(f"Found last value from {value_type}: {last_val}")
-    else:
-        logger.warning("Max temp could not be found.")
+
+    logger.info(f"Found last value from {value_type}: {last_val}")
     return last_val
 
 def get_max_datetime():
@@ -82,10 +74,7 @@ def get_max_datetime():
         logger.info("Query database for max value of column 'datetime' from table 'room-data'.")
         max_datetime = cursor.execute("SELECT datetime FROM 'room-data' ORDER BY datetime DESC LIMIT 1").fetchone()[0]
 
-    if max_datetime < MAX_DATETIME:
-        logger.info("Found max datetime: {}.".format(max_datetime))
-    else:
-        logger.warning("Max datetime could not be found.")
+    logger.info("Found max datetime: {}.".format(max_datetime))
     return max_datetime
 
 def get_min_datetime():
@@ -95,10 +84,7 @@ def get_min_datetime():
         logger.info("Query database for min value of column 'datetime' from table 'room-data'.")
         min_datetime = pandas.Timestamp(cursor.execute("SELECT MIN(datetime) FROM 'room-data'").fetchone()[0])
 
-    if min_datetime > MIN_DATETIME:
-        logger.info("Found min datetime: {}.".format(min_datetime))
-    else:
-        logger.warning("Max datetime could not be found.")
+    logger.info("Found min datetime: {}.".format(min_datetime))
     return min_datetime
 
 
@@ -212,14 +198,44 @@ def get_mqtt_messages():
             DATABASE,
             detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
-        logger.info("Query database for temperature-data of the last 24 hours using pandas read_sql().")
+        logger.info("Query database for all mqtt messages using pandas read_sql().")
         data = pandas.read_sql(
-            "SELECT * FROM 'mqtt_messages' ORDER BY datetime DESC;",
+            "SELECT * FROM 'mqtt_messages' ORDER BY datetime DESC LIMIT 100;",
             parse_dates=['datetime'],
             con=connection
         )
         logger.info("Successfully queried mqtt messages.")
     return data
+
+
+def get_mqtt_messages_by_topic(topics):
+    data = None
+    if topics:
+        with sqlite3.connect(
+                DATABASE,
+                detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
+        ) as connection:
+            logger.info("Query database for all mqtt messages using pandas read_sql().")
+            data = pandas.read_sql(
+                "SELECT * FROM 'mqtt_messages' WHERE topic = {} ORDER BY datetime DESC;".format(' or topic = '.join(['?' for _ in topics])),
+                parse_dates=['datetime'],
+                con=connection,
+                params=topics,
+            )
+            logger.info("Successfully queried mqtt messages.")
+    return data
+
+
+def get_mqtt_topics():
+    topics = None
+    with sqlite3.connect(DATABASE) as connection:
+        logger.info("Query database all recorded mqtt topics using pandas read_sql().")
+        topics = pandas.read_sql(
+            "SELECT topic FROM 'mqtt_messages';",
+            con=connection
+        )
+        logger.info("Successfully queried mqtt messages.")
+    return list(set(topics.topic.unique()))
 
 
 def log_to_db():

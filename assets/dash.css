@@ -79,3 +79,13 @@ DateMonthPicker
     stroke: #222222;
     fill: transparent;
 }
+
+
+/*   pagaing buttons datatable   */
+.previous-page, .next-page, .first-page, .current-page, .last-page {
+    background-color: #222222;
+}
+
+input.current-page::placeholder {
+    color: #7FDBFF;
+}
