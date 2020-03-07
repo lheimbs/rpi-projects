@@ -100,6 +100,7 @@ def app_layout():
         className="app__container",
     )
 
+
 def layout_data():
     return html.Div(
         [
@@ -135,6 +136,7 @@ def layout_data():
             ),
         ],
     )
+
 
 def layout_data_overview():
     return html.Div(
@@ -180,6 +182,7 @@ def layout_data_overview():
         className="data__overview",
     )
 
+
 def layout_data_graph():
     return html.Div(
         [
@@ -216,7 +219,39 @@ def layout_data_graph():
         className="temp__hist"
     )
 
+
 def layout_general():
+    return html.Div(
+        [
+            dcc.Tabs(
+                id="general-main-tabs",
+                value="general-system-tab",
+                parent_className='custom__main__tabs',
+                className='custom__main__tabs__container',
+                children=[
+                    dcc.Tab(
+                        label="System",
+                        value="general-system-tab",
+                        className='custom__main__sub__tab',
+                        selected_className='custom__main__sub__tab____selected',
+                    ),
+                    dcc.Tab(
+                        label="Services",
+                        value="general-services-tab",
+                        className='custom__main__sub__tab',
+                        selected_className='custom__main__sub__tab____selected',
+                    ),
+                ]
+            ),
+            html.Div(
+                id="general-tabs-content",
+                className="app__tab__content"
+            ),
+        ],
+    )
+
+
+def layout_general_system():
     return html.Div(
         [
             html.H4("Raspberry Pi Stats:"),
@@ -330,6 +365,11 @@ def layout_general():
         className="app__general",
     )
 
+
+def layout_general_services():
+    return "Services"
+
+
 def layout_mqtt():
     return html.Div(
         [
@@ -359,6 +399,7 @@ def layout_mqtt():
             ),
         ],
     )
+
 
 def layout_mqtt_messages():
     topics = sql_data.get_mqtt_topics()
@@ -405,6 +446,7 @@ def layout_mqtt_messages():
         ],
         className="mqtt__messages",
     )
+
 
 def layout_mqtt_live():
     return html.Div(
@@ -484,6 +526,7 @@ def layout_mqtt_live():
         className="mqtt__live",
     )
 
+
 def get_states(sub_color, active_color, load_color):
     return [
         daq.Indicator(
@@ -502,6 +545,7 @@ def get_states(sub_color, active_color, load_color):
             className="general__services__state",
         ),
     ]
+
 
 def get_state_colors(data):
     if data['LoadState'] == 'loaded':
@@ -526,6 +570,7 @@ def get_state_colors(data):
         active_color = "red"
 
     return (sub_color, active_color, load_color)
+
 
 # FLASK SETUP
 SERVER = Flask(__name__, static_folder='static')
@@ -576,6 +621,16 @@ def render_content(tab):
         layout = layout_mqtt_live()
     elif tab == 'mqtt-settings-tab':
         layout = html.Div("Settings")
+    return layout
+
+
+@APP.callback(Output('general-tabs-content', 'children'),
+              [Input('general-main-tabs', 'value')])
+def render_content(tab):
+    if tab == 'general-system-tab':
+        layout = layout_general_system()
+    elif tab == 'general-services-tab':
+        layout = layout_general_services()
     return layout
 
 
@@ -633,8 +688,6 @@ def update_current_data(interval, overview_values):
     return gauges
 
 
-
-
 @APP.callback(Output('day-data-graph', 'figure'),
               [Input('data-overview-update', 'n_intervals'),
                Input('overview-values', 'value')])
@@ -676,8 +729,7 @@ def update_day_graph(interval, overview_values):
     }
 
 
-@APP.callback(
-    Output('data-history-graph', 'figure'),
+@APP.callback(Output('data-history-graph', 'figure'),
     [Input('data-history-date-picker', 'start_date'),
      Input('data-history-date-picker', 'end_date')])
 def update_history_graph(start_date, end_date):
@@ -731,6 +783,7 @@ def update_history_graph(start_date, end_date):
 def get_table_data(selected_topics):
     if selected_topics:
         data = sql_data.get_mqtt_messages_by_topic(selected_topics)
+        data.datetime = data.datetime.apply(lambda x: x.strftime('%c'))
         return data.to_dict('records')
     else:
         return []
