@@ -57,12 +57,12 @@ def main():
     try:
         client.connect("192.168.1.201", 8883, 60)
         logging.info("MQTT Broker at IP 192.168.1.201 found")
-    except:
+    except OSError:
         logger.warning("MQTT Broker is not running on 192.168.1.201. Trying *.205")
         try:
             client.connect("192.168.1.205", 8883, 60)
             logger.info("MQTT Broker at IP 192.168.1.205 found")
-        except:
+        except OSError:
             logger.error("No MQTT Broker running on known Ips.")
             return
 
