@@ -57,7 +57,8 @@ def send_code(socketnr, code):
     try:
         rf_device = RFDevice(GPIO_PIN)
         rf_device.enable_tx()
-        rf_device.tx_repeat = 10
+        rf_device.tx_repeat = 20
+
         rf_device.tx_code(CODES[socketnr][code])
     except:
         logger.exception("Error while sending code to socket using rpi_rf")
