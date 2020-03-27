@@ -21,6 +21,8 @@ logging.basicConfig(level=options.log_level,
 
 logger = logging.getLogger(__name__)
 
+IS_CHARGING = False
+
 def on_connect(client, userdata, flags, rc):
     client.subscribe("tablet/shield/battery")
     logger.debug("'on_connect' called.")
@@ -45,11 +47,21 @@ def handle_battery_level(msg):
 
     if payload == "low" or (0 < n_level <= 20):
         logger.info("Battery low detected. Turn Socket on.")
-        rf_handler.turn_socket_on(2, "rpi_rf")
+        for i in [1,2]:
+            logger.debug(f"Try no. {i} turning socket on")
+            rf_handler.turn_socket_on(2, "rpi_rf")
     elif payload == "full" or n_level >= 80:
         logger.info("Battery high detected. Turn socket off.")
         #rf_handler.turn_socket_off(2, "subprocess")
-        rf_handler.turn_socket_off(2, "rpi_rf")
+        for i in [1,2]:
+            logger.debug(f"Try no {i} turning socket off.")
+            rf_handler.turn_socket_off(2, "rpi_rf")
+    elif payload == 'charging':
+        logger.debug("Set IS_CHARGING to 'True'.")
+        IS_CHARGING = True
+    elif payload == 'discharging':
+        logger.debug("Set IS_CHARGING to 'False'.")
+        IS_CHARGING = False
 
 def message_to_db(msg):
     curr_time = datetime.now()
