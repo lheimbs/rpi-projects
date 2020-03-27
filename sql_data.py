@@ -238,6 +238,19 @@ def get_mqtt_topics():
     return list(set(topics.topic.unique()))
 
 
+def add_probe_request(time, mac, make, ssid, ssid_uppercase, rssi):
+    with sqlite3.connect(DATABASE) as connection:
+        insert_with_param = """INSERT INTO 'probe-request'
+                        ('datetime', 'macaddress', 'make', 'ssid', 'ssid_uppercase', 'rssi') 
+                        VALUES (?, ?, ?, ?, ?, ?);"""
+        data_tuple = (time, mac, make, ssid, ssid_uppercase, rssi)
+
+        cursor = connection.cursor()
+        cursor.execute(insert_with_param, data_tuple)
+        connection.commit()
+        logger.info("Data added successfully.")    
+
+
 def log_to_db():
     import os
     f='/home/pi/log/'
