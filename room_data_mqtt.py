@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
 # coding=utf-8
 
+import sys
 import logging
 import argparse
-#import threading
+import socket
 import paho.mqtt.client as mqtt
 from datetime import datetime
 
@@ -23,11 +24,12 @@ logger = logging.getLogger(__name__)
 def on_connect(client, userdata, flags, rc):
     client.subscribe("room/data")
     logger.debug("'on_connect' called.")
+    logger.info("Subscribed to topic 'room/data'.")
 
 def on_message(client, userdata, msg):
     logger.debug("'on_message' called, msg='%s'", str(msg))
     try:
-        message_to_db(msg)
+        temp_message_to_db(msg)
     except:
         logger.exception("Error wrinting incoming message to mqtt database.")
 
@@ -35,7 +37,7 @@ def on_message(client, userdata, msg):
         
 
 
-def message_to_db(msg):
+def temp_message_to_db(msg):
     curr_time = datetime.now()
     payload = msg.payload.decode("utf-8")
     sql_data.add_mqtt_to_db(curr_time, msg.topic, payload)
@@ -54,19 +56,18 @@ def main():
     client.on_connect = on_connect
     client.on_message = on_message
 
-    try:
-        client.connect("192.168.1.201", 8883, 60)
-        logging.info("MQTT Broker at IP 192.168.1.201 found")
-    except:
-        logger.warning("MQTT Broker is not running on 192.168.1.201. Trying *.205")
-        try:
-            client.connect("192.168.1.205", 8883, 60)
-            logger.info("MQTT Broker at IP 192.168.1.205 found")
-        except:
-            logger.error("No MQTT Broker running on known Ips.")
-            return
+    # connect to broker
+    brokers = ['localhost', 'lennyspi.local', '192.168.1.201', '192.168.1.205']
+    for host in brokers:
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        if sock.connect_ex((host, 8883)) == 0:
+            client.connect(host, 8883, 60)
+            logger.info(f"Connected to broker on host {host}.")
+            break
+    else:
+        logger.error("Could not connect to broker.")
+        sys.exit(1)
 
-    #client.loop_start()
     run = True
     while run:
         client.loop()
