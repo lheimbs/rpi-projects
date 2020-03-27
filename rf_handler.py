@@ -29,6 +29,7 @@ def turn_socket_on(socketnr, method):
     elif method == "rpi_rf":
         logger.info("Turn Socket %d on using rpi_rf.", socketnr)
         send_code(socketnr, 'on')
+        send_code(socketnr, 'on')
     else:
         logger.warning("Wrong method.")
         return False
@@ -45,6 +46,7 @@ def turn_socket_off(socketnr, method="rpi_rf"):
         res = subprocess.run([SEND_PATH, "10100", "{}".format(socketnr), "0"])
     elif method == "rpi_rf":
         logger.info("Turn Socket %d on using Python method.", socketnr)
+        send_code(socketnr, 'off')
         send_code(socketnr, 'off')
     else:
         logger.warning("Wrong method")
