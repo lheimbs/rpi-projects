@@ -367,7 +367,13 @@ def layout_general_system():
 
 
 def layout_general_services():
-    return "Services"
+    return html.Div(
+        id="general-services-content",
+        className="general__services__content",
+        children=[
+            "Services"
+        ],
+    )
 
 
 def layout_mqtt():
