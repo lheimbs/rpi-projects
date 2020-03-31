@@ -7,3 +7,6 @@ test*
 *.pickle
 token.*
 credentials.json
+
+# ignore jupyter stuff
+*.ipynb*
