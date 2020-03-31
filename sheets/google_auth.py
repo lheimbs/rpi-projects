@@ -1,15 +1,21 @@
 #!/usr/bin/env python3
 
+from google_auth_oauthlib.flow import InstalledAppFlow
+
+"""
 import pickle
 import os.path
+
+
 from google.auth.transport.requests import Request
 from oauth2client import file as oauth_file, client, tools
-
+"""
 # If modifying these scopes, delete the file token.pickle.
 SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly']
 
+
 def authenticate():
-    creds = None
+    """creds = None
     store = oauth_file.Storage('token.json')
     # The file token.pickle stores the user's access and refresh tokens, and is
     # created automatically when the authorization flow completes for the first
@@ -22,10 +28,12 @@ def authenticate():
         if creds and creds.expired and creds.refresh_token:
             creds.refresh(Request())
         else:
-            flow = client.flow_from_clientsecrets('credentials.json', SCOPES)
-            creds = tools.run_flow(flow, store)
+            flow = InstalledAppFlow.from_client_secrets_file('/home/pi/client_secret_cli.json', SCOPES)
+            creds = flow.run_console()
             #service = build('sheets', 'v4', http=creds.authorize(Http()))
         # Save the credentials for the next run
         with open('token.pickle', 'wb') as token:
-            pickle.dump(creds, token)
+            pickle.dump(creds, token)"""
+    flow = InstalledAppFlow.from_client_secrets_file('/home/pi/client_secret_cli.json', SCOPES)
+    creds = flow.run_console()
     return creds
