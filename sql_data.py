@@ -19,6 +19,7 @@ VALUE_TYPES = ['temperature', 'humidity', 'pressure', 'altitude', 'brightness']
 
 logger = logging.getLogger(__name__)
 
+
 def get_max_value(value_type):
     if value_type not in VALUE_TYPES:
         raise ValueError(f"Invalid value '{value_type}'. Expected one of: {VALUE_TYPES}")
@@ -58,24 +59,31 @@ def get_last_value(value_type):
     last_val = LAST_VAL
     with sqlite3.connect(DATABASE) as connection:
         cursor = connection.cursor()
-        logger.info(f"Query database for newest value of column '{value_type}' from table 'room-data', ordered by column 'datetime'.")
-        last_val = cursor.execute(f"SELECT {value_type} FROM 'room-data' ORDER BY datetime DESC LIMIT 1").fetchone()[0]
+        logger.info(
+            f"Query database for newest value of column '{value_type}' from table 'room-data',",
+            "ordered by column 'datetime'."
+        )
+        last_val = cursor.execute(
+            f"SELECT {value_type} FROM 'room-data' ORDER BY datetime DESC LIMIT 1"
+        ).fetchone()[0]
 
     logger.info(f"Found last value from {value_type}: {last_val}")
     return last_val
+
 
 def get_max_datetime():
     max_datetime = MAX_DATETIME
     with sqlite3.connect(
             DATABASE,
             detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
-        ) as connection:
+    ) as connection:
         cursor = connection.cursor()
         logger.info("Query database for max value of column 'datetime' from table 'room-data'.")
         max_datetime = cursor.execute("SELECT datetime FROM 'room-data' ORDER BY datetime DESC LIMIT 1").fetchone()[0]
 
     logger.info("Found max datetime: {}.".format(max_datetime))
     return max_datetime
+
 
 def get_min_datetime():
     min_datetime = MIN_DATETIME
@@ -92,13 +100,17 @@ def get_day_temp():
     data = None
     max_datetime = get_max_datetime()
     query_datetime = max_datetime - timedelta(hours=24)
-    
+
     with sqlite3.connect(
         DATABASE, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
-        cursor = connection.cursor()
         logger.info("Query database for temperature-data of the last 24 hours using pandas read_sql().")
-        data = pandas.read_sql("SELECT datetime, temperature FROM 'room-data' WHERE datetime > ?", params=(query_datetime, ), parse_dates=['datetime'], con=connection)
+        data = pandas.read_sql(
+            "SELECT datetime, temperature FROM 'room-data' WHERE datetime > ?",
+            params=(query_datetime, ),
+            parse_dates=['datetime'],
+            con=connection
+        )
         logger.info("Successfully queried temperature data from the last 24hrs")
     return data
 
@@ -110,13 +122,17 @@ def get_day_data(values):
     data = None
     max_datetime = get_max_datetime()
     query_datetime = max_datetime - timedelta(hours=24)
-    
+
     with sqlite3.connect(
         DATABASE, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
-        cursor = connection.cursor()
         logger.info(f"Query database for {', '.join(values)} of the last 24 hours using pandas read_sql().")
-        data = pandas.read_sql(f"SELECT datetime, {', '.join(values)} FROM 'room-data' WHERE datetime > ?", params=(query_datetime, ), parse_dates=['datetime'], con=connection)
+        data = pandas.read_sql(
+            f"SELECT datetime, {', '.join(values)} FROM 'room-data' WHERE datetime > ?",
+            params=(query_datetime, ),
+            parse_dates=['datetime'],
+            con=connection
+        )
         logger.info("Successfully queried temperature data from the last 24hrs")
     return data
 
@@ -130,9 +146,9 @@ def get_temp_history(start_time, end_time):
     ) as connection:
         logger.info("Query database for temperature-data of the last 24 hours using pandas read_sql().")
         data = pandas.read_sql(
-            "SELECT datetime, temperature FROM 'room-data' WHERE datetime BETWEEN ? and ?;", 
-            params=(start_time, end_time), 
-            parse_dates=['datetime'], 
+            "SELECT datetime, temperature FROM 'room-data' WHERE datetime BETWEEN ? and ?;",
+            params=(start_time, end_time),
+            parse_dates=['datetime'],
             con=connection
         )
         logger.info("Successfully queried temperature data between {} and {}".format(
@@ -148,14 +164,17 @@ def csv_to_db(filepath):
 
     try:
         res_df = pandas.read_csv(filepath, encoding="UTF-16")
-    except:
+    except UnicodeError:
         res_df = pandas.read_csv(filepath, encoding="UTF-8")
-    #print(res_df)
-    #res_df.insert(0, dt, pandas.to_datetime(res_df['date'] + " " + res_df['time']))
-    res_df.insert(0, dt, res_df.apply(lambda x: datetime.strptime(x['date'] + " " + x['time'], '%d-%m-%Y %H:%M:%S'), axis=1))
+    # res_df.insert(0, dt, pandas.to_datetime(res_df['date'] + " " + res_df['time']))
+    res_df.insert(
+        0,
+        dt,
+        res_df.apply(lambda x: datetime.strptime(x['date'] + " " + x['time'], '%d-%m-%Y %H:%M:%S'), axis=1)
+    )
     try:
         res_df = res_df.drop(columns=['date', 'time'])
-    except:
+    except ValueError:
         res_df = res_df.drop(['date', 'time'], axis=1)
     res_df['pressure'] = 0
     print(res_df)
@@ -165,25 +184,26 @@ def csv_to_db(filepath):
 
 
 def add_room_data_to_db(date_time, temperature, humidity, brightness, pressure):
-        with sqlite3.connect(DATABASE) as connection:
+    with sqlite3.connect(DATABASE) as connection:
 
-            # insert developer detail
-            insert_with_param = """INSERT INTO 'room-data'
-                            ('datetime', 'temperature', 'humidity', 'brightness', 'pressure') 
-                            VALUES (?, ?, ?, ?, ?);"""
-            data_tuple = (date_time, temperature, humidity, brightness, pressure)
+        # insert developer detail
+        insert_with_param = "INSERT INTO 'room-data' "
+        insert_with_param += "('datetime', 'temperature', 'humidity', 'brightness', 'pressure') "
+        insert_with_param += "VALUES (?, ?, ?, ?, ?);"
+        data_tuple = (date_time, temperature, humidity, brightness, pressure)
 
-            cursor = connection.cursor()
-            cursor.execute(insert_with_param, data_tuple)
-            connection.commit()
-            logger.info("Data added successfully.")
+        cursor = connection.cursor()
+        cursor.execute(insert_with_param, data_tuple)
+        connection.commit()
+        logger.info("Data added successfully.")
+
 
 def add_mqtt_to_db(date_time, topic, message):
     with sqlite3.connect(DATABASE) as connection:
         # insert developer detail
-        insert_with_param = """INSERT INTO 'mqtt_messages'
-                        ('datetime', 'topic', 'payload') 
-                        VALUES (?, ?, ?);"""
+        insert_with_param = "INSERT INTO 'mqtt_messages' "
+        insert_with_param += "('datetime', 'topic', 'payload') "
+        insert_with_param += "VALUES (?, ?, ?);"
 
         data_tuple = (date_time, topic, message)
 
@@ -191,6 +211,7 @@ def add_mqtt_to_db(date_time, topic, message):
         cursor.execute(insert_with_param, data_tuple)
         connection.commit()
         logger.info("MQTT-Message '%s' added successfully.", message)
+
 
 def get_mqtt_messages():
     data = None
@@ -217,7 +238,9 @@ def get_mqtt_messages_by_topic(topics):
         ) as connection:
             logger.info("Query database for all mqtt messages using pandas read_sql().")
             data = pandas.read_sql(
-                "SELECT * FROM 'mqtt_messages' WHERE topic = {} ORDER BY datetime DESC;".format(' or topic = '.join(['?' for _ in topics])),
+                "SELECT * FROM 'mqtt_messages' WHERE topic = {} ORDER BY datetime DESC;".format(
+                    ' or topic = '.join(['?' for _ in topics])
+                ),
                 parse_dates=['datetime'],
                 con=connection,
                 params=topics,
@@ -240,21 +263,21 @@ def get_mqtt_topics():
 
 def add_probe_request(time, mac, make, ssid, ssid_uppercase, rssi):
     with sqlite3.connect(DATABASE) as connection:
-        insert_with_param = """INSERT INTO 'probe-request'
-                        ('datetime', 'macaddress', 'make', 'ssid', 'ssid_uppercase', 'rssi') 
-                        VALUES (?, ?, ?, ?, ?, ?);"""
+        insert_with_param = "INSERT INTO 'probe-request' "
+        insert_with_param += "('datetime', 'macaddress', 'make', 'ssid', 'ssid_uppercase', 'rssi') "
+        insert_with_param += "VALUES (?, ?, ?, ?, ?, ?);"
         data_tuple = (time, mac, make, ssid, ssid_uppercase, rssi)
 
         cursor = connection.cursor()
         cursor.execute(insert_with_param, data_tuple)
         connection.commit()
-        logger.info("Data added successfully.")    
+        logger.info("Data added successfully.")
 
 
 def log_to_db():
     import os
-    f='/home/pi/log/'
-    file=os.listdir(f)
+    f = '/home/pi/log/'
+    file = os.listdir(f)
     file.remove('mqtt.log')
     file.remove('data_logger.log')
     file.sort()
@@ -266,13 +289,3 @@ def log_to_db():
         csv_to_db(f+ff)
         input()
     quit()
-
-    get_min_temp()
-    get_max_temp()
-    get_last_temp()
-    get_min_datetime()
-    last_date=get_max_datetime()
-    get_day_temp(last_date)
-    get_day_temp_pandas()
-    quit()
-
