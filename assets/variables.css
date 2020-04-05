@@ -1,0 +1,18 @@
+
+:root {
+    --foreground: #7FDBFF;
+    
+    
+    --background: #111111;
+    --background-medium: #252525;
+    --background-light: #444444;
+
+    --border-light: #d6d6d6;
+    --border-medium: #333333;
+    --border-dark: #0f0f0f;
+
+    --dark-1: #222222;
+    --dark-2: #333333;
+
+    --error: #960c0c;
+}

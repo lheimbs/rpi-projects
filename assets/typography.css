@@ -10,7 +10,7 @@ body {
     line-height: 1.6;
     font-weight: 400;
     font-family: "Open Sans", "HelveticaNeue", "Helvetica Neue", Helvetica, Arial, sans-serif;
-    color: #7FDBFF; 
+    color: var(--foreground); 
 }
 
 /* Typography
