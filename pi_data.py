@@ -1,41 +1,52 @@
 #!/usr/bin/env python3
 # coding=utf-8
 
-#import os
 import subprocess
 import psutil
+import logging
 from psutil._common import bytes2human
 
 
-def get_service_data(service):
+logging.basicConfig(
+    level='DEBUG',
+    format="%(asctime)s - %(module)s - %(levelname)s : %(message)s",
+    datefmt="%d.%m.%Y %H:%M:%S",
+)
+logger = logging.getLogger(__name__)
+
+
+def get_service_data(service, user=True):
     """ Call 'systemctl show [service]' and return the collected results in a dict """
     res = {
-        'Names': '',
-        'Description': '',
-        'ExecMainPID': '',
-        'ExecMainStatus': '',
+        # 'Names': '',
+        # 'Description': '',
+        # 'ExecMainPID': '',
+        # 'ExecMainStatus': '',
         'ActiveState': '',
         'LoadState': '',
         'SubState': '',
         'UnitFileState': '',
-        'ExecMainStartTimestamp': '',
-        'ExecMainExitTimestamp': ''
+        # 'ExecMainStartTimestamp': '',
+        # 'ExecMainExitTimestamp': ''
     }
+    systemctl = ["systemctl", "show", "--user", service] if user else ["systemctl", "show", service]
+    systemctl.append("--property="+','.join([prop for prop in res.keys()]))
+    logger.debug(f"Executing command '{' '.join(systemctl)}'.")
+
     try:
-        key_value = subprocess.check_output(["systemctl","--user", "show", service],
-                                            universal_newlines=True).split('\n')
+        status = subprocess.check_output(
+            systemctl,
+            universal_newlines=True
+        )
+        logger.debug(f"Output: '{' '.join(status.split())}'.")
     except subprocess.CalledProcessError as error:
-        print(error.returncode, error.cmd, error.stdout, error.stderr)
+        logger.error(error.returncode, error.cmd, error.stdout, error.stderr)
         return {}
     except FileNotFoundError:
-        print("Called command not found.")
+        logger.error("Called command not found.")
         return {}
 
-    for entry in key_value:
-        key_val = entry.split("=", 1)
-        if len(key_val) == 2 and key_val[0] in res.keys():
-            res[key_val[0]] = key_val[1]
-    return res
+    return dict([entry.split('=') for entry in status.split()])
 
 
 def get_cpu_percent():

@@ -2,35 +2,36 @@
 
 import unicodedata
 import logging
-import paho.mqtt.client as mqtt
+import socket
+import mqtt_handler
 from datetime import datetime
 from subprocess import Popen, PIPE, CalledProcessError
 
 
-
-logging.basicConfig(level='DEBUG', 
-                    format="%(asctime)s - %(module)s - %(levelname)s : %(message)s",
-                    datefmt="%d.%m.%Y %H:%M:%S")
-
+logging.basicConfig(
+    level='DEBUG',
+    format="%(asctime)s - %(module)s - %(levelname)s : %(message)s",
+    datefmt="%d.%m.%Y %H:%M:%S",
+)
 logger = logging.getLogger(__name__)
 
 
 def sanitize_topic(topic):
-    allowed_cats = ('Ll','Lu','Lo', 'Nd')
+    allowed_cats = ('Ll', 'Lu', 'Lo', 'Nd')
     allowed_chars = ('SOLIDUS', 'HYPHEN-MINUS', 'NUMBER SIGN')
 
     if not topic:
         return False
-    
+
     for curr_char in topic:
         cat = unicodedata.category(curr_char)
         if cat in allowed_cats:
             continue
-        
+
         name = unicodedata.name(curr_char)
         if name in allowed_chars:
             continue
-        
+
         # character is not whitelisted
         return False
     # all characters are whitelisted
@@ -44,7 +45,7 @@ def get_mqtt_live(topic):
     cmd = ['mosquitto_sub', '-h', 'localhost', '-p', '8883', '-t', topic, '-W', '60', '-F', '%j']
     with Popen(cmd, stdout=PIPE, bufsize=1, universal_newlines=True) as p:
         for line in p.stdout:
-            yield line#print(line, end='') # process line here
+            yield line
 
     if p.returncode != 0:
         raise CalledProcessError(p.returncode, p.args)
@@ -56,7 +57,7 @@ def mqtt_connect_async(client, queue):
         logger.debug("'on_connect' called.")
 
     def on_message(client, userdata, msg):
-        logger.debug(f"'on_message' called")        
+        logger.debug(f"'on_message' called")
         now = datetime.now()
         queue.append(
             {
@@ -76,16 +77,6 @@ def mqtt_connect_async(client, queue):
     client.on_connect = on_connect
     client.on_message = on_message
 
-    try:
-        client.connect("192.168.1.201", 8883, 60)
-        logging.info("MQTT Broker at IP 192.168.1.201 found")
-    except:
-        logger.warning("MQTT Broker is not running on 192.168.1.201. Trying *.205")
-        try:
-            client.connect("192.168.1.205", 8883, 60)
-            logger.info("MQTT Broker at IP 192.168.1.205 found")
-        except:
-            logger.error("No MQTT Broker running on known Ips.")
-            return
-    
-    client.loop_start()
+    client = mqtt_handler.connect(client)
+    if client:
+        client.loop_start()
