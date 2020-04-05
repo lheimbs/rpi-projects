@@ -25,14 +25,14 @@ def get_max_value(value_type):
         raise ValueError(f"Invalid value '{value_type}'. Expected one of: {VALUE_TYPES}")
     with sqlite3.connect(DATABASE) as connection:
         cursor = connection.cursor()
-        logger.debug(f"Query database for max value of column {value_type} from table 'room-data'.")
+        logger.info(f"Query database for max value of column {value_type} from table 'room-data'.")
         max_val = cursor.execute(f"SELECT MAX({value_type}) FROM 'room-data'").fetchone()[0]
     if max_val == 'nan':
         return MAX_VAL
     else:
         max_val = float(max_val)
 
-    logger.debug(f"Found max {value_type}: {max_val}")
+    logger.info(f"Found max {value_type}: {max_val}")
     return max_val
 
 
@@ -42,14 +42,14 @@ def get_min_value(value_type):
     min_val = MIN_VAL
     with sqlite3.connect(DATABASE) as connection:
         cursor = connection.cursor()
-        logger.debug(f"Query database for min value of column {value_type} from table 'room-data'.")
+        logger.info(f"Query database for min value of column {value_type} from table 'room-data'.")
         min_val = cursor.execute(f"SELECT MIN({value_type}) FROM 'room-data'").fetchone()[0]
     if min_val == 'nan':
         return MIN_VAL
     else:
         min_val = float(min_val)
 
-    logger.debug(f"Found min {value_type}: {min_val}")
+    logger.info(f"Found min {value_type}: {min_val}")
     return min_val
 
 
@@ -59,14 +59,15 @@ def get_last_value(value_type):
     last_val = LAST_VAL
     with sqlite3.connect(DATABASE) as connection:
         cursor = connection.cursor()
-        logger.debug(
-            f"Query db for newest value of column '{value_type}' from table 'room-data'."
+        logger.info(
+            f"Query database for newest value of column '{value_type}' from table 'room-data',",
+            "ordered by column 'datetime'."
         )
         last_val = cursor.execute(
             f"SELECT {value_type} FROM 'room-data' ORDER BY datetime DESC LIMIT 1"
         ).fetchone()[0]
 
-    logger.debug(f"Found last value from {value_type}: {last_val}")
+    logger.info(f"Found last value from {value_type}: {last_val}")
     return last_val
 
 
@@ -77,10 +78,10 @@ def get_max_datetime():
             detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
         cursor = connection.cursor()
-        logger.debug("Query database for max value of column 'datetime' from table 'room-data'.")
+        logger.info("Query database for max value of column 'datetime' from table 'room-data'.")
         max_datetime = cursor.execute("SELECT datetime FROM 'room-data' ORDER BY datetime DESC LIMIT 1").fetchone()[0]
 
-    logger.debug("Found max datetime: {}.".format(max_datetime))
+    logger.info("Found max datetime: {}.".format(max_datetime))
     return max_datetime
 
 
@@ -88,10 +89,10 @@ def get_min_datetime():
     min_datetime = MIN_DATETIME
     with sqlite3.connect(DATABASE, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as connection:
         cursor = connection.cursor()
-        logger.debug("Query database for min value of column 'datetime' from table 'room-data'.")
+        logger.info("Query database for min value of column 'datetime' from table 'room-data'.")
         min_datetime = pandas.Timestamp(cursor.execute("SELECT MIN(datetime) FROM 'room-data'").fetchone()[0])
 
-    logger.debug("Found min datetime: {}.".format(min_datetime))
+    logger.info("Found min datetime: {}.".format(min_datetime))
     return min_datetime
 
 
@@ -103,14 +104,14 @@ def get_day_temp():
     with sqlite3.connect(
         DATABASE, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
-        logger.debug("Query database for temperature-data of the last 24 hours using pandas read_sql().")
+        logger.info("Query database for temperature-data of the last 24 hours using pandas read_sql().")
         data = pandas.read_sql(
             "SELECT datetime, temperature FROM 'room-data' WHERE datetime > ?",
             params=(query_datetime, ),
             parse_dates=['datetime'],
             con=connection
         )
-        logger.debug("Successfully queried temperature data from the last 24hrs")
+        logger.info("Successfully queried temperature data from the last 24hrs")
     return data
 
 
@@ -125,14 +126,14 @@ def get_day_data(values):
     with sqlite3.connect(
         DATABASE, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
-        logger.debug(f"Query database for {', '.join(values)} of the last 24 hours using pandas read_sql().")
+        logger.info(f"Query database for {', '.join(values)} of the last 24 hours using pandas read_sql().")
         data = pandas.read_sql(
             f"SELECT datetime, {', '.join(values)} FROM 'room-data' WHERE datetime > ?",
             params=(query_datetime, ),
             parse_dates=['datetime'],
             con=connection
         )
-        logger.debug("Successfully queried temperature data from the last 24hrs")
+        logger.info("Successfully queried temperature data from the last 24hrs")
     return data
 
 
@@ -143,14 +144,14 @@ def get_temp_history(start_time, end_time):
             DATABASE,
             detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
-        logger.debug("Query database for temperature-data of the last 24 hours using pandas read_sql().")
+        logger.info("Query database for temperature-data of the last 24 hours using pandas read_sql().")
         data = pandas.read_sql(
             "SELECT datetime, temperature FROM 'room-data' WHERE datetime BETWEEN ? and ?;",
             params=(start_time, end_time),
             parse_dates=['datetime'],
             con=connection
         )
-        logger.debug("Successfully queried temperature data between {} and {}".format(
+        logger.info("Successfully queried temperature data between {} and {}".format(
             datetime.strftime(start_time, '%d-%m-%Y'),
             datetime.strftime(end_time, '%d-%m-%Y'),
         ))
@@ -183,7 +184,6 @@ def csv_to_db(filepath):
 
 
 def add_room_data_to_db(date_time, temperature, humidity, brightness, pressure):
-    logger.debug(f"Add room data to table 'room-data': {date_time, temperature, humidity, brightness, pressure}")
     with sqlite3.connect(DATABASE) as connection:
 
         # insert developer detail
@@ -195,11 +195,10 @@ def add_room_data_to_db(date_time, temperature, humidity, brightness, pressure):
         cursor = connection.cursor()
         cursor.execute(insert_with_param, data_tuple)
         connection.commit()
-        logger.debug("Data added successfully.")
+        logger.info("Data added successfully.")
 
 
 def add_mqtt_to_db(date_time, topic, message):
-    logger.debug(f"Add mqtt message to table 'mqtt_messages': {date_time, topic, message}")
     with sqlite3.connect(DATABASE) as connection:
         # insert developer detail
         insert_with_param = "INSERT INTO 'mqtt_messages' "
@@ -211,7 +210,7 @@ def add_mqtt_to_db(date_time, topic, message):
         cursor = connection.cursor()
         cursor.execute(insert_with_param, data_tuple)
         connection.commit()
-        logger.debug("MQTT-Message '%s' added successfully.", message)
+        logger.info("MQTT-Message '%s' added successfully.", message)
 
 
 def get_mqtt_messages():
@@ -220,51 +219,49 @@ def get_mqtt_messages():
             DATABASE,
             detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
-        logger.debug("Query database for all mqtt messages using pandas read_sql().")
+        logger.info("Query database for all mqtt messages using pandas read_sql().")
         data = pandas.read_sql(
             "SELECT * FROM 'mqtt_messages' ORDER BY datetime DESC LIMIT 100;",
             parse_dates=['datetime'],
             con=connection
         )
-        logger.debug("Successfully queried mqtt messages.")
+        logger.info("Successfully queried mqtt messages.")
     return data
 
 
-def get_mqtt_messages_by_topic(topics, limit=500):
+def get_mqtt_messages_by_topic(topics):
     data = None
     if topics:
         with sqlite3.connect(
                 DATABASE,
                 detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
         ) as connection:
-            logger.debug(f"Query database for all mqtt messages with topics {topics}, limit {limit}.")
+            logger.info("Query database for all mqtt messages using pandas read_sql().")
             data = pandas.read_sql(
-                "SELECT * FROM 'mqtt_messages' WHERE topic = {} ORDER BY datetime DESC LIMIT ?;".format(
+                "SELECT * FROM 'mqtt_messages' WHERE topic = {} ORDER BY datetime DESC;".format(
                     ' or topic = '.join(['?' for _ in topics])
                 ),
                 parse_dates=['datetime'],
                 con=connection,
-                params=topics+[limit],
+                params=topics,
             )
-            logger.debug("Successfully queried mqtt messages.")
-            data['datetime'] = data['datetime'].apply(lambda x: x.strftime('%c'))
+            logger.info("Successfully queried mqtt messages.")
     return data
 
 
 def get_mqtt_topics():
     topics = None
     with sqlite3.connect(DATABASE) as connection:
-        logger.debug("Query database all recorded mqtt topics using pandas read_sql().")
+        logger.info("Query database all recorded mqtt topics using pandas read_sql().")
         topics = pandas.read_sql(
-            "SELECT DISTINCT topic FROM 'mqtt_messages';",
+            "SELECT topic FROM 'mqtt_messages';",
             con=connection
         )
-        logger.debug("Successfully queried mqtt messages.")
-    return topics.topic  # list(set(topics.topic.unique()))
+        logger.info("Successfully queried mqtt messages.")
+    return list(set(topics.topic.unique()))
 
 
 def add_probe_request(time, mac, make, ssid, ssid_uppercase, rssi):
-    logger.debug(f"Add probe request to table 'probe-request': {time, mac, make, ssid, ssid_uppercase, rssi}")
     with sqlite3.connect(DATABASE) as connection:
         insert_with_param = "INSERT INTO 'probe-request' "
         insert_with_param += "('datetime', 'macaddress', 'make', 'ssid', 'ssid_uppercase', 'rssi') "
@@ -274,95 +271,7 @@ def add_probe_request(time, mac, make, ssid, ssid_uppercase, rssi):
         cursor = connection.cursor()
         cursor.execute(insert_with_param, data_tuple)
         connection.commit()
-        logger.debug("Data added successfully.")
-
-
-def add_shopping_list(shopping_list):
-    logger.debug(f"Add shopping list to database 'shopping': {shopping_list.to_dict()}")
-    with sqlite3.connect(
-            DATABASE,
-            detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
-    ) as connection:
-        shopping_list.to_sql('shopping', connection, if_exists='append', index=False)
-
-
-def get_unique_shopping_days():
-    logger.debug("Get unique days in table 'shopping'.")
-    with sqlite3.connect(
-        DATABASE,
-        detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
-    ) as connection:
-        days = pandas.read_sql(
-            "SELECT DISTINCT Date FROM 'shopping' ORDER BY DATE",
-            parse_dates=['Date'],
-            con=connection
-        )
-        # logger.debug(f"Found days: {days.to_dict()}")
-        days = days.set_index('Date')
-    return days
-
-
-def get_unique_shopping_shops():
-    logger.debug("Get unique Shops from table 'shopping'.")
-    with sqlite3.connect(
-        DATABASE,
-        detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
-    ) as connection:
-        shops = pandas.read_sql(
-            "SELECT DISTINCT Shop FROM 'shopping'",
-            con=connection
-        )
-        # logger.debug(f"Found shops: {shops.to_dict()}")
-    return shops
-
-
-def get_day_shop_expenses(day, shop):
-    logger.debug(f"Get expenses for day {day} and shop {shop}.")
-    day_str = day.strftime('%Y-%m-%d %H:%M:%S')
-    with sqlite3.connect(
-        DATABASE,
-        detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
-    ) as connection:
-        expense = pandas.read_sql_query(
-            "SELECT  sum(DISTINCT Payment) FROM 'shopping' WHERE Date = ? and Shop = ?;",
-            params=(day_str, shop),
-            con=connection
-        )
-        # logger.debug(f"Found expense: {expense.to_dict()}")
-    return expense.iloc[0, 0]
-
-
-def get_shopping_expenses_per_shop(shop):
-    logger.debug(f"Get expenses for shop {shop} from 'shopping' table.")
-    with sqlite3.connect(
-        DATABASE,
-        detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
-    ) as connection:
-        expense = pandas.read_sql_query(
-            "SELECT  DISTINCT Date, Payment FROM 'shopping' WHERE Shop = ?;",
-            params=(shop, ),
-            parse_dates=['Date'],
-            con=connection
-        )
-    expense_gouped = expense.groupby('Date')['Payment'].sum().rename(shop)
-    # logger.debug(f"Found unique expenses: {expense_gouped.to_dict()}.")
-    return expense_gouped
-
-
-def get_shopping_complete():
-    """ Collects all entries from shopping table.
-        Usage not advisable, since this can take a while.
-    """
-    logging.debug("Get complete 'shopping' table.")
-    with sqlite3.connect(
-        DATABASE,
-        detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
-    ) as connection:
-        data = pandas.read_sql(
-            "SELECT * FROM 'shopping'",
-            con=connection
-        )
-    return data
+        logger.info("Data added successfully.")
 
 
 def log_to_db():

@@ -78,6 +78,13 @@ EMPTY_GRAPH = {
         'height': '250',
     }
 }
+UNITS = {
+    'temperature': '°C',
+    'pressure': 'Pa',
+    'humidity': '%',
+    'altitude': 'm',
+    'brightness': 'lx',
+}
 
 
 def app_layout():
@@ -173,37 +180,62 @@ def layout_data():
 def layout_data_overview():
     return html.Div(
         [
-            # curent temperature
-            dcc.Checklist(
-                id="data-overview-values",
-                options=[
-                    {'label': 'Temperature', 'value': 'temperature'},
-                    {'label': 'Humidity', 'value': 'humidity'},
-                    {'label': 'Pressure', 'value': 'pressure'},
-                    {'label': 'Altitude', 'value': 'altitude', 'disabled': True},
-                    {'label': 'Brightness', 'value': 'brightness'},
-                ],
-                value=['temperature', 'humidity', 'pressure'],
-                labelStyle={'display': 'inline-block'},
-                persistence_type='memory',
-            ),
             html.Div(
-                id="current-data",
-                className="data__current",
+                className='row',
+                children=[
+                    html.Div(
+                        className="six column",
+                        children=[
+                            html.H6("Choose displayed data:")
+                        ]
+                    ),
+                    html.Div(
+                        className="six column",
+                        children=[
+                            dcc.Checklist(
+                                id="data-overview-values",
+                                options=[
+                                    {'label': 'Temperature', 'value': 'temperature'},
+                                    {'label': 'Humidity', 'value': 'humidity'},
+                                    {'label': 'Pressure', 'value': 'pressure'},
+                                    {'label': 'Altitude', 'value': 'altitude', 'disabled': True},
+                                    {'label': 'Brightness', 'value': 'brightness'},
+                                ],
+                                value=['temperature', 'humidity', 'pressure'],
+                                labelStyle={'display': 'inline-block'},
+                                persistence_type='memory',
+                            ),
+                        ]
+                    )
+                ]
             ),
+            #html.Div(
+            #    className='row',
+            #    id="current-data",
+            #),
             html.Div(
-                [
-                    html.H6("Last 24 hours", className="data__overview__day__title title__center"),
-                    dcc.Graph(
-                        id="day-data-graph",
-                        figure=EMPTY_GRAPH,
-                        config={
-                            'staticPlot': True
-                        },
-                        className="graph",
+                className='row',
+                children=[
+                    html.Div(
+                        className="twelve column",
+                        children=[
+                            html.H6("Last 24 hours", className="data__overview__day__title title__center"),
+                        ],
+                    ),
+                    html.Div(
+                        className="twelve column",
+                        children=[
+                            dcc.Graph(
+                                id="day-data-graph",
+                                figure=EMPTY_GRAPH,
+                                config={
+                                    'staticPlot': True
+                                },
+                                className="graph",
+                            ),
+                        ],
                     ),
                 ],
-                className="data__overview__day",
             ),
             dcc.Interval(
                 id="data-overview-update",
@@ -211,7 +243,7 @@ def layout_data_overview():
                 n_intervals=0,
             ),
         ],
-        className="data__overview",
+        className="container" #  data__overview",
     )
 
 
@@ -769,18 +801,10 @@ def update_current_data(interval, overview_values):
         min_val = round(sql_data.get_min_value(value))
         max_val = ceil(sql_data.get_max_value(value))
         step = round((max_val - min_val) / 3)
-        if value == 'temperature':
-            unit = "°C"
-        elif value == 'pressure':
-            unit = "Pa"
-        elif value == 'humidity':
-            unit = "%"
-        elif value == 'altitude':
-            unit = "m"
-        elif value == 'brightness':
-            unit = "lx"
+        if value in UNITS.keys():
+            unit = UNITS[value]
         else:
-            unit = ""
+            unit = ''
 
         gauges.append(html.Div(
             [
@@ -808,7 +832,7 @@ def update_current_data(interval, overview_values):
                     className="temp__current__gauge",
                 )
             ],
-            # className="overview__current__gauges"
+            className="overview__current__gauges"
         ))
     return gauges
 
