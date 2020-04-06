@@ -60,7 +60,7 @@ def get_last_value(value_type):
     with sqlite3.connect(DATABASE) as connection:
         cursor = connection.cursor()
         logger.info(
-            f"Query database for newest value of column '{value_type}' from table 'room-data',",
+            f"Query database for newest value of column '{value_type}' from table 'room-data', " +
             "ordered by column 'datetime'."
         )
         last_val = cursor.execute(
@@ -272,6 +272,18 @@ def add_probe_request(time, mac, make, ssid, ssid_uppercase, rssi):
         cursor.execute(insert_with_param, data_tuple)
         connection.commit()
         logger.info("Data added successfully.")
+
+
+def get_gauge_data(value_type):
+    if value_type not in VALUE_TYPES:
+        raise ValueError(f"Invalid value '{value_type}'. Expected one of: {VALUE_TYPES}")
+    with sqlite3.connect(DATABASE) as connection:
+        cursor = connection.cursor()
+        logger.info(f"Query database for gauge data of column {value_type} from table 'room-data'.")
+        min_val = cursor.execute(f"SELECT MIN({value_type}) FROM 'room-data'").fetchone()[0]
+        max_val = cursor.execute(f"SELECT MAX({value_type}) FROM 'room-data'").fetchone()[0]
+        curr_val = cursor.execute(f"SELECT {value_type} FROM 'room-data' ORDER BY datetime DESC LIMIT 1").fetchone()[0]
+    return min_val, max_val, curr_val
 
 
 def log_to_db():

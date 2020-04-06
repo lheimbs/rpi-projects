@@ -85,6 +85,13 @@ UNITS = {
     'altitude': 'm',
     'brightness': 'lx',
 }
+DIV_COLUMNS = {
+    1: "twelve columns",
+    2: "eight columns",
+    3: "four columns",
+    4: "three columns",
+    5: "two columns",
+}
 
 
 def app_layout():
@@ -125,12 +132,6 @@ def app_layout():
                     ),
                 ]
             ),
-            # html.Div(
-            #     [
-            #         html.H4("HOME CONTROL DASHBOARD", className="app__header__title")
-            #     ],
-            #     className="app__header"
-            # ),
             html.Div(
                 id="main-tabs-content",
                 className="app__tab__content"
@@ -184,35 +185,38 @@ def layout_data_overview():
                 className='row',
                 children=[
                     html.Div(
-                        className="six column",
                         children=[
                             html.H6("Choose displayed data:")
-                        ]
+                        ],
+                        className="six columns",
                     ),
-                    html.Div(
-                        className="six column",
-                        children=[
-                            dcc.Checklist(
-                                id="data-overview-values",
-                                options=[
-                                    {'label': 'Temperature', 'value': 'temperature'},
-                                    {'label': 'Humidity', 'value': 'humidity'},
-                                    {'label': 'Pressure', 'value': 'pressure'},
-                                    {'label': 'Altitude', 'value': 'altitude', 'disabled': True},
-                                    {'label': 'Brightness', 'value': 'brightness'},
-                                ],
-                                value=['temperature', 'humidity', 'pressure'],
-                                labelStyle={'display': 'inline-block'},
-                                persistence_type='memory',
-                            ),
-                        ]
+                    html.Div([
+                        dcc.Checklist(
+                            id="data-overview-values",
+                            options=[
+                                {'label': 'Temperature', 'value': 'temperature'},
+                                {'label': 'Humidity', 'value': 'humidity'},
+                                {'label': 'Pressure', 'value': 'pressure'},
+                                {'label': 'Altitude', 'value': 'altitude', 'disabled': True},
+                                {'label': 'Brightness', 'value': 'brightness'},
+                            ],
+                            value=['temperature', 'humidity', 'pressure'],
+                            labelStyle={'display': 'inline-block'},
+                            persistence_type='memory',
+                            className='checklist',
+                        )],
+                        className="six columns",
                     )
                 ]
             ),
-            #html.Div(
-            #    className='row',
-            #    id="current-data",
-            #),
+            html.Div(
+                id="current-data-headers",
+                className='row',
+            ),
+            html.Div(
+                id="current-data",
+                className='overview__current__gauges row',
+            ),
             html.Div(
                 className='row',
                 children=[
@@ -243,7 +247,7 @@ def layout_data_overview():
                 n_intervals=0,
             ),
         ],
-        className="container" #  data__overview",
+        #className="container" #  data__overview",
     )
 
 
@@ -791,49 +795,65 @@ def render_shopping_content(tab):
     return layout
 
 
+@APP.callback(Output('current-data-headers', 'children'),
+              [Input('data-overview-update', 'n_intervals'),
+               Input('data-overview-values', 'value')])
+def update_current_data(interval, overview_values):
+    return [
+        html.Div(
+            children=[
+                html.H6(f"Current {value.capitalize()}", className="temp__current__title title__center"),
+            ],
+            className=DIV_COLUMNS[len(overview_values)],
+        ) for value in overview_values
+    ]
+
+
 @APP.callback(Output('current-data', 'children'),
               [Input('data-overview-update', 'n_intervals'),
                Input('data-overview-values', 'value')])
 def update_current_data(interval, overview_values):
     gauges = []
     for value in overview_values:
-        last = sql_data.get_last_value(value)
-        min_val = round(sql_data.get_min_value(value))
-        max_val = ceil(sql_data.get_max_value(value))
+        min_val, max_val, last = sql_data.get_gauge_data(value)
+        min_val = round(min_val)
+        max_val = ceil(max_val)
         step = round((max_val - min_val) / 3)
+
         if value in UNITS.keys():
             unit = UNITS[value]
         else:
             unit = ''
 
-        gauges.append(html.Div(
-            [
-                html.H6(f"Current {value.capitalize()}", className="temp__current__title title__center"),
-                html.Div(
-                    [
-                        daq.Gauge(
-                            id="current-temp-gauge",
-                            value=last,
-                            min=min_val,
-                            max=max_val,
-                            showCurrentValue=True,
-                            units=unit,
-                            # s cale={'start': min_val, 'interval': 1, 'labelInterval': 2},
-                            color={
-                                "gradient": True,
-                                "ranges": {
-                                    "blue": [min_val, min_val + step],
-                                    "green": [min_val + step, max_val - step],
-                                    "red": [max_val - step, max_val]
-                                }
-                            },
-                        )
-                    ],
-                    className="temp__current__gauge",
-                )
-            ],
-            className="overview__current__gauges"
-        ))
+        gauges.append(
+            html.Div(
+                children=[
+                    html.Div(
+                        children=[
+                            daq.Gauge(
+                                id="current-temp-gauge",
+                                value=last,
+                                min=min_val,
+                                max=max_val,
+                                showCurrentValue=True,
+                                units=unit,
+                                # scale={'start': min_val, 'interval': 1, 'labelInterval': 2},
+                                color={
+                                    "gradient": True,
+                                    "ranges": {
+                                        "blue": [min_val, min_val + step],
+                                        "green": [min_val + step, max_val - step],
+                                        "red": [max_val - step, max_val]
+                                    }
+                                },
+                            )
+                        ],
+                        className="gauge",
+                    )
+                ],
+                className=DIV_COLUMNS[len(overview_values)],
+            )
+        )
     return gauges
 
 
