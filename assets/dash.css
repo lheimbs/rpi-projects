@@ -7,11 +7,30 @@ GraduatedBar - background
     border: 1px solid var(--border-medium) !important;
 }
 
+/*
+GraduatedBar - single element
+*/
 .aturR {
     width: 0.5px !important;
     margin: 0px 0.25px !important;
 }
 
+/*
+Checklist padding
+*/
+.checklist {
+    /* border: 10px solid #fff !important; */
+    padding: 10px 0;
+}
+
+
+/*
+Gauge
+*/
+.gauge {
+    padding: 10px 0;
+    text-align: center;
+}
 
 /*
 Gauge height
@@ -93,7 +112,9 @@ DateMonthPicker
 }
 
 
-/*   pagaing buttons datatable   */
+/* 
+Datatable pagaing buttons
+*/
 .previous-page, .next-page, .first-page, .current-page, .last-page {
     background-color: var(--background-medium) !important;
 }
