@@ -258,11 +258,7 @@ def get_mqtt_topics():
             "SELECT distinct topic FROM 'mqtt_messages';",
             con=connection
         )
-<<<<<<< HEAD
-        logger.info("Successfully queried mqtt messages.")
-=======
         logger.debug("Successfully queried mqtt messages.")
->>>>>>> shopping
     return topics.topic
 
 
