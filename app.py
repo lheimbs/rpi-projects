@@ -180,246 +180,273 @@ def layout_data():
 
 def layout_data_overview():
     return html.Div(
-        [
+        children=[
             html.Div(
-                className='row',
                 children=[
-                    html.Div(
-                        children=[
-                            html.H6("Choose displayed data:")
+                    html.H6("Choose display data:"),
+                    dcc.Checklist(
+                        id="data-overview-values",
+                        options=[
+                            {'label': 'Temperature', 'value': 'temperature'},
+                            {'label': 'Humidity', 'value': 'humidity'},
+                            {'label': 'Pressure', 'value': 'pressure'},
+                            {'label': 'Altitude', 'value': 'altitude', 'disabled': True},
+                            {'label': 'Brightness', 'value': 'brightness'},
                         ],
-                        className="six columns",
-                    ),
-                    html.Div([
-                        dcc.Checklist(
-                            id="data-overview-values",
-                            options=[
-                                {'label': 'Temperature', 'value': 'temperature'},
-                                {'label': 'Humidity', 'value': 'humidity'},
-                                {'label': 'Pressure', 'value': 'pressure'},
-                                {'label': 'Altitude', 'value': 'altitude', 'disabled': True},
-                                {'label': 'Brightness', 'value': 'brightness'},
-                            ],
-                            value=['temperature', 'humidity', 'pressure'],
-                            labelStyle={'display': 'inline-block'},
-                            persistence_type='memory',
-                            className='checklist',
-                        )],
-                        className="six columns",
+                        value=['temperature', 'humidity', 'pressure'],
+                        labelStyle={'display': 'block'},
+                        persistence_type='memory',
+                        className='checklist',
                     )
-                ]
+                ],
+                className='two columns settings',
             ),
             html.Div(
-                id="current-data-headers",
-                className='row',
-            ),
-            html.Div(
-                id="current-data",
-                className='overview__current__gauges row',
-            ),
-            html.Div(
-                className='row',
                 children=[
                     html.Div(
-                        className="twelve column",
-                        children=[
-                            html.H6("Last 24 hours", className="data__overview__day__title title__center"),
-                        ],
+                        id="current-data-headers",
+                        className='row',
                     ),
                     html.Div(
-                        className="twelve column",
+                        id="current-data",
+                        className='overview__current__gauges row',
+                    ),
+                    html.Div(
+                        className='row',
                         children=[
-                            dcc.Graph(
-                                id="day-data-graph",
-                                figure=EMPTY_GRAPH,
-                                config={
-                                    'staticPlot': True
-                                },
-                                className="graph",
+                            html.Div(
+                                className="twelve column",
+                                children=[
+                                    html.H6("Last 24 hours", className="data__overview__day__title title__center"),
+                                ],
+                            ),
+                            html.Div(
+                                className="twelve column graph_in_column",
+                                children=[
+                                    dcc.Graph(
+                                        id="day-data-graph",
+                                        figure=EMPTY_GRAPH,
+                                        config={
+                                            'staticPlot': True
+                                        },
+                                        className="graph",
+                                    ),
+                                ],
                             ),
                         ],
                     ),
+                    dcc.Interval(
+                        id="data-overview-update",
+                        interval=int(GRAPH_INTERVAL),
+                        n_intervals=0,
+                    ),
                 ],
-            ),
-            dcc.Interval(
-                id="data-overview-update",
-                interval=int(GRAPH_INTERVAL),
-                n_intervals=0,
-            ),
+                className='ten columns data',
+            )
         ],
-        #className="container" #  data__overview",
+        className='row',
     )
 
 
 def layout_data_graph():
     return html.Div(
-        [
-            dcc.DatePickerRange(
-                id="data-history-date-picker",
-                start_date_placeholder_text="Start Period",
-                end_date_placeholder_text="End Period",
-                # minimum_nights=1,
-                display_format='DD MM Y',
-                month_format='MM YYYY',
-                day_size=35,
-                first_day_of_week=1,
-                persistence=True,
-                persistence_type='session',
-                updatemode='bothdates',
-                with_full_screen_portal=True,
-                className="data__hist__item",
+        children=[
+            html.Div(
+                children=[
+                    dcc.DatePickerRange(
+                        id="data-history-date-picker",
+                        start_date_placeholder_text="Start Period",
+                        end_date_placeholder_text="End Period",
+                        # minimum_nights=1,
+                        display_format='DD MM Y',
+                        month_format='MM YYYY',
+                        day_size=35,
+                        first_day_of_week=1,
+                        persistence=True,
+                        persistence_type='session',
+                        updatemode='bothdates',
+                        with_full_screen_portal=True,
+                        className="data__hist__item",
+                    ),
+                ],
+                className="two columns",
             ),
-            dcc.Loading(id="loading-1", color=COLORS['main'], children=[
-                dcc.Graph(
-                    id="data-history-graph",
-                    figure=EMPTY_GRAPH,
-                    config={
-                                'staticPlot': False,
-                                'showSendToCloud': False,
-                                'showLink': False,
-                                'displaylogo': False,
-                                'modeBarButtonsToRemove':
-                                [
-                                    'sendDataToCloud',
-                                    'hoverClosestCartesian',
-                                    'hoverCompareCartesian',
-                                    'zoom3d',
-                                    'pan3d',
-                                    'orbitRotation',
-                                    'tableRotation',
-                                    'handleDrag3d',
-                                    'resetCameraDefault3d',
-                                    'resetCameraLastSave3d',
-                                    'hoverClosest3d; (Geo) zoomInGeo',
-                                    'zoomOutGeo',
-                                    'resetGeo',
-                                    'hoverClosestGeo',
-                                    'hoverClosestGl2d',
-                                    'hoverClosestPie',
-                                    'toggleSpikelines',
-                                    'toImage'
-                                ],
-                            },
-                    className="data__hist__item graph",
-                )
-            ], type="default"),
+            html.Div(
+                children=[
+                    dcc.Loading(id="loading-1", color=COLORS['main'], children=[
+                        dcc.Graph(
+                            id="data-history-graph",
+                            figure=EMPTY_GRAPH,
+                            config={
+                                        'staticPlot': False,
+                                        'showSendToCloud': False,
+                                        'showLink': False,
+                                        'displaylogo': False,
+                                        'modeBarButtonsToRemove':
+                                        [
+                                            'sendDataToCloud',
+                                            'hoverClosestCartesian',
+                                            'hoverCompareCartesian',
+                                            'zoom3d',
+                                            'pan3d',
+                                            'orbitRotation',
+                                            'tableRotation',
+                                            'handleDrag3d',
+                                            'resetCameraDefault3d',
+                                            'resetCameraLastSave3d',
+                                            'hoverClosest3d; (Geo) zoomInGeo',
+                                            'zoomOutGeo',
+                                            'resetGeo',
+                                            'hoverClosestGeo',
+                                            'hoverClosestGl2d',
+                                            'hoverClosestPie',
+                                            'toggleSpikelines',
+                                            'toImage'
+                                        ],
+                                    },
+                            className="data__hist__item graph",
+                        )
+                    ], type="default"),
+                ],
+                className="ten columns",
+            )
         ],
-        className="temp__hist"
+        className="row"  # temp__hist
     )
 
 
 def layout_general():
     return html.Div(
         [
-            html.H4("Raspberry Pi Stats:"),
+            dcc.Interval(
+                        id="general-stats-update",
+                        interval=int(STATS_INTERVAL),
+                        n_intervals=0,
+            ),
             html.Div(
-                [
+                className='row',
+                children=[
                     html.Div(
-                        [
+                        className='four columns',
+                        children=[
+                            html.H4("Raspberry Pi Stats:"),
+                        ]
+                    ),
+                    html.Div(
+                        className='eight columns',
+                        children=[
                             html.Div(
-                                [
-                                    html.H6("CPU:"),
+                                className='row',
+                                children=[
+                                    html.Div(
+                                        [
+                                            html.H6("CPU:"),
+                                        ],
+                                        className="four columns",  # general__stats__item",
+                                    ),
                                     html.Div(
                                         id="cpu-stats",
-                                        className="general__stats__gauge",
+                                        className="eight columns"  # general__stats__item",
                                     ),
-                                ],
-                                className="general__stats__cpu",
+                                ]
                             ),
                             html.Div(
-                                [
+                                className='row',
+                                children=[
                                     html.Div(
                                         [
                                             html.H6("RAM:"),
-                                            html.Div(
-                                                id="ram-stats",
-                                                className="general__stats__item",
-                                            ),
                                         ],
-                                        id="ram-container",
-                                        className="general__stats__item",
+                                        className="four columns",  # general__stats__item",
                                     ),
+                                    html.Div(
+                                        id="ram-stats",
+                                        className="eight columns"  # general__stats__item",
+                                    ),
+                                ]
+                            ),
+                            html.Div(
+                                className='row',
+                                children=[
                                     html.Div(
                                         [
                                             html.H6("Disk:"),
-                                            html.Div(
-                                                id="disk-stats",
-                                            ),
                                         ],
-                                        id="disk-container",
-                                        className="general__stats__item",
+                                        className="four columns",  # general__stats__item",
                                     ),
-                                ],
-                                className="general__stats__storage",
+                                    html.Div(
+                                        id="disk-stats",
+                                        className="eight columns"  # general__stats__item",
+                                    ),
+                                ]
                             ),
-
                         ],
-                        className="general__stats__items",
-                    ),
-                    dcc.Interval(
-                                id="general-stats-update",
-                                interval=int(STATS_INTERVAL),
-                                n_intervals=0,
                     ),
                 ],
-                className="general__stats",
             ),
-            html.H4("Raspberry Pi Service Data:"),
             html.Div(
-                [
+                className='row',
+                children=[
                     html.Div(
-                        [
-                            html.H6("Dashboard:"),
-                            html.Div(
-                                id="dashbaord-states",
-                                className="general__services__states"
-                            ),
-                            dcc.Interval(
-                                id="dashboard-interval",
-                                interval=int(GRAPH_INTERVAL),
-                                n_intervals=0,
-                            ),
-
-                        ],
-                        className="general__service__item"
+                        className='four columns',
+                        children=[
+                            html.H4("Raspberry Pi Service Data:"),
+                        ]
                     ),
                     html.Div(
-                        [
-                            html.H6("MQTT Handler:"),
+                        className='eight columns',
+                        children=[
                             html.Div(
-                                id="datalogger-states",
-                                className="general__services__states"
+                                className='row',
+                                children=[
+                                    html.Div(
+                                        className="four columns",
+                                        children=[
+                                            html.H6("Dashboard:"),
+                                        ]
+                                    ),
+                                    html.Div(
+                                        id="dashbaord-states",
+                                        className="eight columns",
+                                    ),
+                                ]
                             ),
-                            dcc.Interval(
-                                id="datalogger-interval",
-                                interval=int(GRAPH_INTERVAL),
-                                n_intervals=0,
-                            ),
-
-                        ],
-                        className="general__service__item"
-                    ),
-                    html.Div(
-                        [
-                            html.H6("Probemon:"),
                             html.Div(
-                                id="mqtt-states",
-                                className="general__services__states"
+                                className='row',
+                                children=[
+                                    html.Div(
+                                        className="four columns",
+                                        children=[
+                                            html.H6("MQTT Handler:"),
+                                        ]
+                                    ),
+                                    html.Div(
+                                        id="datalogger-states",
+                                        className="eight columns",
+                                    ),
+                                ]
                             ),
-                            dcc.Interval(
-                                id="mqtt-interval",
-                                interval=int(GRAPH_INTERVAL),
-                                n_intervals=0,
+                            html.Div(
+                                className='row',
+                                children=[
+                                    html.Div(
+                                        className="four columns",
+                                        children=[
+                                            html.H6("Probemon:"),
+                                        ]
+                                    ),
+                                    html.Div(
+                                        id="mqtt-states",
+                                        className="eight columns",
+                                    ),
+                                ]
                             ),
-
-                        ],
-                        className="general__service__item"
+                        ]
                     ),
-                ],
-                className="general__services",
-            ),
+                ]
+            )
         ],
-        className="app__general",
+        className=""  #app__general",
     )
 
 
@@ -455,142 +482,155 @@ def layout_mqtt():
 
 
 def layout_mqtt_messages():
-    topics = sql_data.get_mqtt_topics()
-    return html.Div(
-        [
-            html.Div(
-                children=[
-                    html.H6("Select topics:"),
-                    dcc.Checklist(
-                        id="mqtt-select-topics",
-                        value=['tablet/shield/battery'] if 'tablet/shield/battery' in topics else [],
-                        labelStyle={'display': 'inline-block'},
-                        options=[{'label': topic, 'value': topic} for topic in sql_data.get_mqtt_topics()],
-                        className="mqtt__topic__select",
-                    ),
-                    html.H6("Select number of entries:"),
-                    dcc.Input(
-                        id='mqtt-select-num-msgs',
-                        type='number',
-                        value=1000,
-                        min=1,
-                        max=99999,
-                        debounce=True,
-                    )
-                ],
-                className='mqtt__settings__panel',
-            ),
-            dcc.Loading(id="loading-1", color=COLORS['main'], children=[
-                dash_table.DataTable(
-                    id='table',
-                    columns=[
-                        {"name": 'Date/Time', "id": 'datetime'},
-                        {"name": 'Topic', "id": 'topic'},
-                        {"name": 'Payload', "id": 'payload'},
+    return html.Div([
+        html.Div(
+            className='row',
+            children=[
+                html.Div(
+                    className='two columns settings',
+                    children=[
+                        html.H6("Select topics:"),
+                        dcc.Loading(id="loading-mqtt-topics", color=COLORS['main'], children=[
+                            dcc.Checklist(
+                                id="mqtt-select-topics",
+                                value=[],
+                                labelStyle={'display': 'block'},
+                                options=[{'label': topic, 'value': topic} for topic in sql_data.get_mqtt_topics()],
+                                className="mqtt__topic__select",
+                            ),
+                        ]),
+                        html.H6("Select number of entries:"),
+                        dcc.Input(
+                            id='mqtt-select-num-msgs',
+                            type='number',
+                            value=1000,
+                            min=1,
+                            max=99999,
+                            debounce=True,
+                        )
                     ],
-                    data=[],  # data.to_dict('records'),
-
-                    page_action="native",
-                    page_current=0,
-                    page_size=20,
-                    style_as_list_view=True,
-                    style_header={
-                        'backgroundColor': COLORS['light-background'],
-                        'fontWeight': 'bold'
-                    },
-                    style_cell={
-                        'padding': '5px',
-                        'textAlign': 'center',
-                        'backgroundColor': COLORS['background'],
-                    },
                 ),
-            ], type="default"),
-        ],
-        className="mqtt__messages",
-    )
+                html.Div(
+                    className='ten columns',
+                    children=[
+                        dcc.Loading(id="loading-mqtt-messages", type="default", color=COLORS['main'], children=[
+                            dash_table.DataTable(
+                                id='table-mqtt-messages',
+                                columns=[
+                                    {"name": 'Date/Time', "id": 'datetime'},
+                                    {"name": 'Topic', "id": 'topic'},
+                                    {"name": 'Payload', "id": 'payload'},
+                                ],
+                                data=[],  # data.to_dict('records'),
+
+                                page_action="native",
+                                page_current=0,
+                                page_size=25,
+                                style_as_list_view=True,
+                                style_header={
+                                    'backgroundColor': COLORS['light-background'],
+                                    'fontWeight': 'bold'
+                                },
+                                style_cell={
+                                    'padding': '5px',
+                                    'textAlign': 'center',
+                                    'backgroundColor': COLORS['background'],
+                                },
+                            ),
+                        ]),
+                    ],
+                )
+            ],
+        ),
+    ])
 
 
 def layout_mqtt_live():
     return html.Div(
+        className='row',
         children=[
             html.Div(
+                className='two columns settings',
                 children=[
-                    html.Div(
-                        [
-                            html.Datalist(
-                                id='mqtt-topic-recent',
-                                children=[html.Option(value=val) for val in sql_data.get_mqtt_topics()],
-                            ),
-                            dcc.Input(
-                                id='mqtt-topic-input',
-                                # debounce=True,
-                                list='mqtt-topic-recent',
-                                placeholder="Topic...",
-                                # persistence=True,
-                                # persistence_type='session',
-                                style={
-                                    'backgroundColor': COLORS['light-background'],
-                                    'color': COLORS['main'],
-                                    'border': f"2px solid {COLORS['main']}",
-                                    'border-radius': '4px',
-                                    'padding': '6px 10px',
-                                },
-                            ),
-                            html.Button('Subscribe', id='mqtt-live-subscribe'),
-                            html.Div(id='mqtt-live-sub-status'),
-                        ],
-                        className='mqtt__live__input'
+                    html.Datalist(
+                        id='mqtt-topic-recent',
+                        children=[html.Option(value=val) for val in sql_data.get_mqtt_topics()],
                     ),
-                    html.Div(
-                        [
-                            html.Button(
-                                'Start',
-                                id='mqtt-live-start',
-                                disabled=False,
-                                className='start__stop__button',
-                            ),
-                            html.Button('Stop', id='mqtt-live-stop', disabled=True, className='start__stop__button'),
-                        ],
-                        className='mqtt__live__start__stop__buttons'
-                    )
+                    dcc.Input(
+                        id='mqtt-topic-input',
+                        list='mqtt-topic-recent',
+                        placeholder="Topic...",
+                        style={
+                            'backgroundColor': COLORS['light-background'],
+                            'color': COLORS['main'],
+                            'border': f"2px solid {COLORS['main']}",
+                            'border-radius': '4px',
+                            'padding': '6px 10px',
+                        },
+                    ),
+                    html.Button('Subscribe', id='mqtt-live-subscribe'),
+                    html.Hr(),
+                    html.Button(
+                        'Start',
+                        id='mqtt-live-start',
+                        disabled=False,
+                        className='start__stop__button',
+                    ),
+                    html.Button('Stop', id='mqtt-live-stop', disabled=True, className='start__stop__button'),
+                    html.Hr(),
+                    html.Div(id='mqtt-live-sub-status'),
                 ],
-                className="mqtt__live__control",
             ),
-            dcc.Interval(id='mqtt-live-interval', interval=500),
-            dash_table.DataTable(
-                id='live-table',
-                columns=[
-                    {"name": 'Date', "id": 'date', 'selectable': False},
-                    {"name": 'Time', "id": 'time'},
-                    {"name": 'Topic', "id": 'topic'},
-                    {"name": 'Payload', "id": 'payload'},
-                    {"name": 'qos', "id": 'qos'},
-                ],
-                data=[],  # data.to_dict('records'),
-                editable=False,
-                page_action="native",
-                page_current=0,
-                page_size=20,
-                style_as_list_view=True,
-                is_focused=False,
-                style_header={
-                    'backgroundColor': COLORS['light-background'],
-                    'fontWeight': 'bold'
-                },
-                style_cell={
-                    'padding': '5px',
-                    'textAlign': 'center',
-                    'backgroundColor': COLORS['background'],
-                },
-                style_data_conditional=[
-                    {
-                        'if': {'row_index': 'odd'},
-                        'backgroundColor': COLORS['light-background']
-                    }
+            html.Div(
+                className='ten columns settings',
+                children=[
+                    dcc.Interval(id='mqtt-live-interval', interval=500),
+                    dash_table.DataTable(
+                        id='live-table',
+                        columns=[
+                            {"name": 'Date', "id": 'date'},
+                            {"name": 'Time', "id": 'time'},
+                            {"name": 'Topic', "id": 'topic'},
+                            {"name": 'Quality of Service', "id": 'qos'},
+                            {"name": 'Payload', "id": 'payload'},
+                        ],
+                        data=[],
+                        editable=False,
+                        fill_width=False,
+                        page_action="native",
+                        page_current=0,
+                        page_size=20,
+                        style_as_list_view=True,
+                        is_focused=False,
+                        style_header={
+                            'backgroundColor': COLORS['light-background'],
+                            'fontWeight': 'bold'
+                        },
+                        style_cell={
+                            'padding': '5px',
+                            'textAlign': 'center',
+                            'backgroundColor': COLORS['background'],
+                        },
+                        style_cell_conditional=[
+                            {
+                                'if': {'column_id': 'payload'},
+                                'textAlign': 'left'
+                            }
+                        ],
+                        style_data={
+                            'whiteSpace': 'normal',
+                            'height': 'auto'
+                        },
+                        style_data_conditional=[
+                            {
+                                'if': {'row_index': 'odd'},
+                                'backgroundColor': COLORS['light-background']
+                            }
+                        ],
+                    ),
                 ],
             ),
         ],
-        className="mqtt__live",
     )
 
 
@@ -685,21 +725,41 @@ def layout_shopping_add():
 
 def get_states(sub_color, active_color, load_color):
     return [
-        daq.Indicator(
-            label="Service Running",
-            color=sub_color,
-            className="general__services__state",
-        ),
-        daq.Indicator(
-            label="Service State",
-            color=active_color,
-            className="general__services__state",
-        ),
-        daq.Indicator(
-            label="State Config File",
-            color=load_color,
-            className="general__services__state",
-        ),
+        html.Div(
+            className='row',
+            children=[
+                html.Div(
+                    className="one-third column",
+                    children=[
+                        daq.Indicator(
+                            label="Service Running",
+                            color=sub_color,
+                            className="general__services__state",
+                        ),
+                    ]
+                ),
+                html.Div(
+                    className="one-third column",
+                    children=[
+                        daq.Indicator(
+                            label="Service State",
+                            color=active_color,
+                            className="general__services__state",
+                        ),
+                    ]
+                ),
+                html.Div(
+                    className="one-third column",
+                    children=[
+                        daq.Indicator(
+                            label="State Config File",
+                            color=load_color,
+                            className="general__services__state",
+                        ),
+                    ]
+                ),
+            ]
+        )
     ]
 
 
@@ -798,7 +858,7 @@ def render_shopping_content(tab):
 @APP.callback(Output('current-data-headers', 'children'),
               [Input('data-overview-update', 'n_intervals'),
                Input('data-overview-values', 'value')])
-def update_current_data(interval, overview_values):
+def update_current_data_headers(interval, overview_values):
     return [
         html.Div(
             children=[
@@ -893,7 +953,7 @@ def update_day_graph(interval, overview_values):
             },
             'margin': {'l': 30, 'b': 30, 'r': 10, 't': 10},
             # 'width': '100%',
-            'height': '380',
+            'height': '400',
         }
     }
 
@@ -946,7 +1006,7 @@ def update_history_graph(start_date, end_date):
         return EMPTY_GRAPH
 
 
-@APP.callback(Output('table', 'data'),
+@APP.callback(Output('table-mqtt-messages', 'data'),
               [Input('mqtt-select-topics', 'value'),
                Input('mqtt-select-num-msgs', 'value')])
 def get_table_data(selected_topics, limit):
@@ -1037,7 +1097,7 @@ def render_mqtt_live(interval):
 
 
 @APP.callback(Output('dashbaord-states', 'children'),
-              [Input('dashboard-interval', 'n_intervals')])
+              [Input('general-stats-update', 'n_intervals')])
 def update_dashboard_service(interval):
     data = pi_data.get_service_data("dashboard")
     colors = get_state_colors(data)
@@ -1045,16 +1105,16 @@ def update_dashboard_service(interval):
 
 
 @APP.callback(Output('datalogger-states', 'children'),
-              [Input('datalogger-interval', 'n_intervals')])
-def update_datalogger_service(interval):
+              [Input('general-stats-update', 'n_intervals')])
+def update_mqtt_handler_service(interval):
     data = pi_data.get_service_data("mqtthandler")
     colors = get_state_colors(data)
     return get_states(*colors)
 
 
 @APP.callback(Output('mqtt-states', 'children'),
-              [Input('mqtt-interval', 'n_intervals')])
-def update_mqtt_service(interval):
+              [Input('general-stats-update', 'n_intervals')])
+def update_probemon_service(interval):
     data = pi_data.get_service_data("probemon", user=False)
     colors = get_state_colors(data)
     return get_states(*colors)
@@ -1064,23 +1124,11 @@ def update_mqtt_service(interval):
               [Input('general-stats-update', 'n_intervals')])
 def cpu_state(interval):
     cpu_percent = pi_data.get_cpu_percent()
-    return daq.Gauge(
-        id="cpu-gauge",
-        value=cpu_percent,
-        min=0,
+    return daq.GraduatedBar(
         max=100,
+        value=cpu_percent,
         showCurrentValue=True,
-        units="%",
-        scale={'start': 0, 'interval': 5, 'labelInterval': 25},
-        color={
-            "gradient": True,
-            "ranges": {
-                "green": [0, 33],
-                "yellow": [33, 66],
-                "red": [66, 100]
-            }
-        },
-        size=200,
+        className='graduated__bar',
     )
 
 
