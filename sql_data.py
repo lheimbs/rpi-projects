@@ -260,7 +260,7 @@ def get_mqtt_topics():
             con=connection
         )
         logger.debug("Successfully queried mqtt messages.")
-    return topics.topic  # list(set(topics.topic.unique()))
+    return topics.topic
 
 
 def add_probe_request(time, mac, make, ssid, ssid_uppercase, rssi):
@@ -297,7 +297,6 @@ def get_unique_shopping_days():
             parse_dates=['Date'],
             con=connection
         )
-        # logger.debug(f"Found days: {days.to_dict()}")
         days = days.set_index('Date')
     return days
 
@@ -312,7 +311,6 @@ def get_unique_shopping_shops():
             "SELECT DISTINCT Shop FROM 'shopping'",
             con=connection
         )
-        # logger.debug(f"Found shops: {shops.to_dict()}")
     return shops
 
 
@@ -328,7 +326,6 @@ def get_day_shop_expenses(day, shop):
             params=(day_str, shop),
             con=connection
         )
-        # logger.debug(f"Found expense: {expense.to_dict()}")
     return expense.iloc[0, 0]
 
 
@@ -345,7 +342,6 @@ def get_shopping_expenses_per_shop(shop):
             con=connection
         )
     expense_gouped = expense.groupby('Date')['Payment'].sum().rename(shop)
-    # logger.debug(f"Found unique expenses: {expense_gouped.to_dict()}.")
     return expense_gouped
 
 
