@@ -243,3 +243,7 @@ div {
         justify-content: center;
     }
 }
+
+.form__header {
+    text-align: right;
+}
