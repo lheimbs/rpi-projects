@@ -229,7 +229,7 @@ def get_mqtt_messages():
     return data
 
 
-def get_mqtt_messages_by_topic(topics):
+def get_mqtt_messages_by_topic(topics, limit=5000):
     data = None
     if topics:
         with sqlite3.connect(
@@ -238,8 +238,9 @@ def get_mqtt_messages_by_topic(topics):
         ) as connection:
             logger.info("Query database for all mqtt messages using pandas read_sql().")
             data = pandas.read_sql(
-                "SELECT * FROM 'mqtt_messages' WHERE topic = {} ORDER BY datetime DESC;".format(
-                    ' or topic = '.join(['?' for _ in topics])
+                "SELECT * FROM 'mqtt_messages' WHERE topic = {} ORDER BY datetime DESC LIMIT {};".format(
+                    ' or topic = '.join(['?' for _ in topics]),
+                    limit
                 ),
                 parse_dates=['datetime'],
                 con=connection,
@@ -254,11 +255,11 @@ def get_mqtt_topics():
     with sqlite3.connect(DATABASE) as connection:
         logger.info("Query database all recorded mqtt topics using pandas read_sql().")
         topics = pandas.read_sql(
-            "SELECT topic FROM 'mqtt_messages';",
+            "SELECT distinct topic FROM 'mqtt_messages';",
             con=connection
         )
         logger.info("Successfully queried mqtt messages.")
-    return list(set(topics.topic.unique()))
+    return topics.topic
 
 
 def add_probe_request(time, mac, make, ssid, ssid_uppercase, rssi):
