@@ -258,7 +258,11 @@ def get_mqtt_topics():
             "SELECT distinct topic FROM 'mqtt_messages';",
             con=connection
         )
+<<<<<<< HEAD
         logger.info("Successfully queried mqtt messages.")
+=======
+        logger.debug("Successfully queried mqtt messages.")
+>>>>>>> shopping
     return topics.topic
 
 
@@ -275,16 +279,88 @@ def add_probe_request(time, mac, make, ssid, ssid_uppercase, rssi):
         logger.info("Data added successfully.")
 
 
-def get_gauge_data(value_type):
-    if value_type not in VALUE_TYPES:
-        raise ValueError(f"Invalid value '{value_type}'. Expected one of: {VALUE_TYPES}")
-    with sqlite3.connect(DATABASE) as connection:
-        cursor = connection.cursor()
-        logger.info(f"Query database for gauge data of column {value_type} from table 'room-data'.")
-        min_val = cursor.execute(f"SELECT MIN({value_type}) FROM 'room-data'").fetchone()[0]
-        max_val = cursor.execute(f"SELECT MAX({value_type}) FROM 'room-data'").fetchone()[0]
-        curr_val = cursor.execute(f"SELECT {value_type} FROM 'room-data' ORDER BY datetime DESC LIMIT 1").fetchone()[0]
-    return min_val, max_val, curr_val
+def add_shopping_list(shopping_list):
+    logger.debug(f"Add shopping list to database 'shopping': {shopping_list.to_dict()}")
+    with sqlite3.connect(
+            DATABASE,
+            detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
+    ) as connection:
+        shopping_list.to_sql('shopping', connection, if_exists='append', index=False)
+
+
+def get_unique_shopping_days():
+    logger.debug("Get unique days in table 'shopping'.")
+    with sqlite3.connect(
+        DATABASE,
+        detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
+    ) as connection:
+        days = pandas.read_sql(
+            "SELECT DISTINCT Date FROM 'shopping' ORDER BY DATE",
+            parse_dates=['Date'],
+            con=connection
+        )
+        days = days.set_index('Date')
+    return days
+
+
+def get_unique_shopping_shops():
+    logger.debug("Get unique Shops from table 'shopping'.")
+    with sqlite3.connect(
+        DATABASE,
+        detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
+    ) as connection:
+        shops = pandas.read_sql(
+            "SELECT DISTINCT Shop FROM 'shopping'",
+            con=connection
+        )
+    return shops
+
+
+def get_day_shop_expenses(day, shop):
+    logger.debug(f"Get expenses for day {day} and shop {shop}.")
+    day_str = day.strftime('%Y-%m-%d %H:%M:%S')
+    with sqlite3.connect(
+        DATABASE,
+        detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
+    ) as connection:
+        expense = pandas.read_sql_query(
+            "SELECT  sum(DISTINCT Payment) FROM 'shopping' WHERE Date = ? and Shop = ?;",
+            params=(day_str, shop),
+            con=connection
+        )
+    return expense.iloc[0, 0]
+
+
+def get_shopping_expenses_per_shop(shop):
+    logger.debug(f"Get expenses for shop {shop} from 'shopping' table.")
+    with sqlite3.connect(
+        DATABASE,
+        detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
+    ) as connection:
+        expense = pandas.read_sql_query(
+            "SELECT  DISTINCT Date, Payment FROM 'shopping' WHERE Shop = ?;",
+            params=(shop, ),
+            parse_dates=['Date'],
+            con=connection
+        )
+    expense_gouped = expense.groupby('Date')['Payment'].sum().rename(shop)
+    return expense_gouped
+
+
+def get_shopping_complete():
+    """ Collects all entries from shopping table.
+        Usage not advisable, since this can take a while.
+    """
+    logging.debug("Get complete 'shopping' table.")
+    with sqlite3.connect(
+        DATABASE,
+        detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
+    ) as connection:
+        data = pandas.read_sql(
+            "SELECT * FROM 'shopping'",
+            con=connection
+        )
+    return data
 
 
 def log_to_db():
