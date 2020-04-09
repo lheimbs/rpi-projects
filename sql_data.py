@@ -280,7 +280,7 @@ def get_gauge_data(value_type):
         raise ValueError(f"Invalid value '{value_type}'. Expected one of: {VALUE_TYPES}")
     with sqlite3.connect(DATABASE) as connection:
         cursor = connection.cursor()
-        logger.info(f"Query database for gauge data of column {value_type} from table 'room-data'.")
+        logger.info(f"Query database for gauge data (min, max and last value) of column {value_type} from table 'room-data'.")
         min_val = cursor.execute(f"SELECT MIN({value_type}) FROM 'room-data'").fetchone()[0]
         max_val = cursor.execute(f"SELECT MAX({value_type}) FROM 'room-data'").fetchone()[0]
         curr_val = cursor.execute(f"SELECT {value_type} FROM 'room-data' ORDER BY datetime DESC LIMIT 1").fetchone()[0]
