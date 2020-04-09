@@ -720,7 +720,98 @@ def layout_shopping_overview():
 
 
 def layout_shopping_add():
-    return "no"
+    return html.Div([
+        html.Br(),
+        html.Div(
+            className='row',
+            children=[
+                html.Div(
+                    className='two columns',
+                    children=[
+                        html.H6("Date:", className='form__header')
+                    ]
+                ),
+                html.Div(
+                    className='two columns',
+                    children=[
+                        dcc.DatePickerSingle(
+                            id="shopping-new-list-date",
+                            placeholder="Date...",
+                            display_format='DD MM Y',
+                            month_format='MM YYYY',
+                            day_size=35,
+                            first_day_of_week=1,
+                            persistence=True,
+                            persistence_type='session',
+                            with_full_screen_portal=True,
+                            className="data__hist__item",
+                        )
+                    ]
+                ),
+                html.Div(
+                    className='two columns',
+                    children=[
+                        html.H6("Price:", className='form__header')
+                    ]
+                ),
+                html.Div(
+                    className='two columns',
+                    children=[
+                        dcc.Input(
+                            id='shopping-new-price',
+                            type="number",
+                            # pattern=r"\d{1,3}[,.]{0,1}\d{0,2}",  # ignored in number input
+                        )
+                    ]
+                ),
+                html.Div(
+                    className='two columns',
+                    children=[
+                        html.H6("Shop:", className='form__header')
+                    ]
+                ),
+                html.Div(
+                    className='two columns',
+                    children=[
+                        html.Datalist(
+                            id='shopping-new-shop-previous',
+                            children=[html.Option(value=val) for val in sql_data.get_unique_shopping_shops().Shop],
+                        ),
+                        dcc.Input(
+                            id='shopping-new-shop',
+                            placeholder="Shop...",
+                            list='shopping-new-shop-previous',
+                            # pattern=r"\d{1,3}[,.]{0,1}\d{0,2}",  # ignored in number input
+                            style={
+                                'backgroundColor': COLORS['light-background'],
+                                'color': COLORS['main'],
+                                'border': f"2px solid {COLORS['main']}",
+                                'border-radius': '4px',
+                                'padding': '6px 10px',
+                            },
+                        )
+                    ]
+                ),
+            ],
+        ),
+        html.Div(
+            className='row',
+            children=[
+                html.Div(
+                    className='six columns',
+                    children=[
+                        html.H6("")
+                    ]
+                ),
+                html.Div(
+                    className='six columns',
+                    children=[
+                        
+                    ]
+                ),
+            ],
+        ),
+    ])
 
 
 def get_states(sub_color, active_color, load_color):
