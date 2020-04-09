@@ -11,6 +11,10 @@ div {
 }
 */
 
+.settings {
+    border: 1px solid var(--border-dark);
+}
+
 .app__container {
     margin-top: 0%;
     margin-left: 5%;

@@ -3,24 +3,36 @@ GraduatedBar - background
 */
 .MVpzQ {
     background-color: var(--background) !important;
-    margin: 10px !important;
+    /* margin: 10px !important; */
     border: 1px solid var(--border-medium) !important;
 }
 
-/*
-GraduatedBar - single element
+
+/* 
+DataTable cell selection
 */
-.aturR {
-    width: 0.5px !important;
-    margin: 0px 0.25px !important;
+.dash-table-container .dash-spreadsheet-container .dash-spreadsheet-inner table {
+    /* border-collapse: collapse; */
+    /* font-family: monospace; */
+    --accent: var(--orange) !important;
+    /* --border: lightgrey; */
+    /* --text-color: #3c3c3c; */
+    /* --hover: #fdfdfd; */
+    /* --background-color-ellipses: #fdfdfd; */
+    /* --faded-text: #fafafa; */
+    /* --faded-text-header: #b4b4b4; */
+    --selected-background: var(--background) !important;
+    /* --faded-dropdown: #f0f0f0; */
+    /* --muted: #c8c8c8; */
 }
+
 
 /*
 Checklist padding
 */
 .checklist {
     /* border: 10px solid #fff !important; */
-    padding: 10px 0;
+    padding: 1% 1%;
 }
 
 
@@ -49,10 +61,18 @@ Gauge current font size
 }
 
 /*
+Graph in column margin left override
+*/
+.graph_in_column {
+    margin-left: 0 !important;
+}
+
+/*
 DateMonthPicker
 */
 .DateInput .DateRangePickerInput_arrow .DateRangePickerInput_arrow_1 .data__hist__item {
     color: var(--foreground) !important;
+    font-weight: 300 !important;
     background-color: var(--background) !important;
     border: 1px solid var(--border-dark);
     /* border: 1px solid #111111; */
