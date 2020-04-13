@@ -8,12 +8,7 @@ from datetime import datetime
 from subprocess import Popen, PIPE, CalledProcessError
 
 
-logging.basicConfig(
-    level='DEBUG',
-    format="%(asctime)s - %(module)s - %(levelname)s : %(message)s",
-    datefmt="%d.%m.%Y %H:%M:%S",
-)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('dashboard.mqtt_live')
 
 
 def sanitize_topic(topic):
