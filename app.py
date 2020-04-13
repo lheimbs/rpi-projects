@@ -7,23 +7,29 @@ import dash_daq as daq
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_table
-# import pandas as pd
-# import numpy as np
+import pandas as pd
 import scipy.signal as signal
 import paho.mqtt.client as mqtt
 import plotly.graph_objects as go
+import dash_bootstrap_components as dbc
 
 from math import ceil
 from collections import deque
 from datetime import datetime
 from flask import Flask
-from dash.dependencies import Input, Output
+from dash.dependencies import Input, Output, State, ALL  # , MATCH
+from dash.exceptions import PreventUpdate
 
 import pi_data
 import sql_data
 import mqtt_live
 
-logger = logging.getLogger(__name__)
+logging.basicConfig(
+    level=logging.DEBUG,
+    format="%(module)s - %(levelname)s : %(message)s",
+)
+logger = logging.getLogger('dashboard')
+
 
 B_MQTT_BUTTONS = True
 GRAPH_INTERVAL = os.environ.get("GRAPH_INTERVAL", 60000)
@@ -33,13 +39,16 @@ MQTT_CLIENT.connected_flag = False
 MQTT_CLIENT.enable_logger()
 QUEUE = deque(maxlen=20)
 N_BUTTON_HIST = 0
+N_SHOPPING_ITEMS = 15
 COLORS = {
-    'foreground': '#123456',
-    'main': '#7FDBFF',  # 4491ed',
+    'foreground': '#7FDBFF',  # 4491ed',
+    'foreground-dark': '#123456',
     'background': '#111111',
-    'light-background': '#222222',
+    'background-medium': '#252525',
     'red': 'red',
     'green': 'green',
+    'error': '#960c0c',
+    'success': '#17960c',
     'colorway': [
         '#fc5c65',
         '#45aaf2',
@@ -71,7 +80,7 @@ EMPTY_GRAPH = {
         'paper_bgcolor': COLORS['background'],
         'plot_bgcolor': COLORS['background'],
         'font': {
-            'color': COLORS['foreground']
+            'color': COLORS['foreground-dark']
         },
         'margin': {'l': 30, 'b': 30, 'r': 10, 't': 30},
         # 'width': '100%',
@@ -100,6 +109,14 @@ def app_layout():
             # store site's settings
             # dcc.Store(id='local', storage_type='local'),
             # header
+            dcc.Store(
+                id='shopping-products-store',
+                storage_type='session',
+            ),
+            dcc.Store(
+                id='shopping-shops-store',
+                storage_type='session',
+            ),
             dcc.Tabs(
                 id="main-tabs",
                 value="data-tab",
@@ -266,14 +283,13 @@ def layout_data_graph():
                         persistence_type='session',
                         updatemode='bothdates',
                         with_full_screen_portal=True,
-                        className="data__hist__item",
                     ),
                 ],
                 className="two columns",
             ),
             html.Div(
                 children=[
-                    dcc.Loading(id="loading-1", color=COLORS['main'], children=[
+                    dcc.Loading(id="loading-1", color=COLORS['foreground'], children=[
                         dcc.Graph(
                             id="data-history-graph",
                             figure=EMPTY_GRAPH,
@@ -304,7 +320,7 @@ def layout_data_graph():
                                             'toImage'
                                         ],
                                     },
-                            className="data__hist__item graph",
+                            className="graph",
                         )
                     ], type="default"),
                 ],
@@ -446,7 +462,7 @@ def layout_general():
                 ]
             )
         ],
-        className=""  #app__general",
+        className=""
     )
 
 
@@ -490,7 +506,7 @@ def layout_mqtt_messages():
                     className='two columns settings',
                     children=[
                         html.H6("Select topics:"),
-                        dcc.Loading(id="loading-mqtt-topics", color=COLORS['main'], children=[
+                        dcc.Loading(id="loading-mqtt-topics", color=COLORS['foreground'], children=[
                             dcc.Checklist(
                                 id="mqtt-select-topics",
                                 value=[],
@@ -513,7 +529,7 @@ def layout_mqtt_messages():
                 html.Div(
                     className='ten columns',
                     children=[
-                        dcc.Loading(id="loading-mqtt-messages", type="default", color=COLORS['main'], children=[
+                        dcc.Loading(id="loading-mqtt-messages", type="default", color=COLORS['foreground'], children=[
                             dash_table.DataTable(
                                 id='table-mqtt-messages',
                                 columns=[
@@ -528,7 +544,7 @@ def layout_mqtt_messages():
                                 page_size=25,
                                 style_as_list_view=True,
                                 style_header={
-                                    'backgroundColor': COLORS['light-background'],
+                                    'backgroundColor': COLORS['background-medium'],
                                     'fontWeight': 'bold'
                                 },
                                 style_cell={
@@ -561,9 +577,9 @@ def layout_mqtt_live():
                         list='mqtt-topic-recent',
                         placeholder="Topic...",
                         style={
-                            'backgroundColor': COLORS['light-background'],
-                            'color': COLORS['main'],
-                            'border': f"2px solid {COLORS['main']}",
+                            'backgroundColor': COLORS['background-medium'],
+                            'color': COLORS['foreground'],
+                            'border': f"2px solid {COLORS['foreground']}",
                             'border-radius': '4px',
                             'padding': '6px 10px',
                         },
@@ -603,7 +619,7 @@ def layout_mqtt_live():
                         style_as_list_view=True,
                         is_focused=False,
                         style_header={
-                            'backgroundColor': COLORS['light-background'],
+                            'backgroundColor': COLORS['background-medium'],
                             'fontWeight': 'bold'
                         },
                         style_cell={
@@ -624,7 +640,7 @@ def layout_mqtt_live():
                         style_data_conditional=[
                             {
                                 'if': {'row_index': 'odd'},
-                                'backgroundColor': COLORS['light-background']
+                                'backgroundColor': COLORS['background-medium']
                             }
                         ],
                     ),
@@ -656,77 +672,51 @@ def layout_shopping():
                 ),
             ]
         ),
-        dcc.Loading(id="loading-2", color=COLORS['main'], children=[
-            html.Div(
-                id="shopping-tabs-content",
-                className="app__tab__content"
-            ),
-        ], type="default"),
+        html.Div(
+            id="shopping-tabs-content",
+            className="app__tab__content"
+        ),
     ])
 
 
 def layout_shopping_overview():
-    df_days = sql_data.get_unique_shopping_days()
-    shops = sql_data.get_unique_shopping_shops()
-    shops = shops.sort_values('Shop')
+    return html.Div(
+        className='row',
+        children=[
+            html.Div(
+                className='row',
+                children=[
 
-    data = []
-    for shop in shops.Shop:
-        expense = sql_data.get_shopping_expenses_per_shop(shop)
-        df_days = df_days.join(expense)
-        data.append(go.Bar(
-            name=shop,
-            x=df_days.index,
-            y=df_days[shop],
-            hovertemplate="%{x|%d.%m.%Y} : %{y:.2f}€",
-            marker={
-                'line': {
-                    'width': 0,
-                    'color': COLORS['background'],
-                }
-            }
-        ))
-
-    fig = go.Figure(data=data)
-    fig.update_layout(
-        barmode='stack',
-        autosize=True,
-        legend={
-            'orientation': 'h',
-        },
-        font={
-            'color': COLORS['main'],
-        },
-        colorway=COLORS['colorway'],
-        paper_bgcolor=COLORS['background'],
-        plot_bgcolor=COLORS['background'],
-        coloraxis={
-            'colorbar': {
-                'outlinewidth': 0,
-                'bordercolor': COLORS['background'],
-                'bgcolor': COLORS['background'],
-            },
-        },
-    )
-    return dcc.Graph(
-        id="shopping-overview-graph",
-        figure=fig,
-        clear_on_unhover=True,
-        config={
-            'staticPlot': False,
-        },
-        className="shopping__daily_graph graph",
+                ],
+            ),
+            html.Div(
+                className='row',
+                children=[
+                    dcc.Loading(id="loading-shopping-overview-graph", color=COLORS['foreground'], children=[
+                        dcc.Graph(
+                            id="shopping-overview-graph",
+                            clear_on_unhover=True,
+                            config={
+                                'staticPlot': False,
+                            },
+                            className="shopping__daily_graph graph",
+                        ),
+                    ], type="default"),
+                ],
+            ),
+        ],
     )
 
 
 def layout_shopping_add():
     return html.Div([
+        dcc.Store(id='shopping-save-clear-clicks'),
         html.Br(),
         html.Div(
-            className='row',
+            className='row shopping__add__header',
             children=[
                 html.Div(
-                    className='two columns',
+                    className='one column',
                     children=[
                         html.H6("Date:", className='form__header')
                     ]
@@ -744,14 +734,13 @@ def layout_shopping_add():
                             persistence=True,
                             persistence_type='session',
                             with_full_screen_portal=True,
-                            className="data__hist__item",
                         )
                     ]
                 ),
                 html.Div(
                     className='two columns',
                     children=[
-                        html.H6("Price:", className='form__header')
+                        html.H6("Sum total:", className='form__header')
                     ]
                 ),
                 html.Div(
@@ -760,12 +749,13 @@ def layout_shopping_add():
                         dcc.Input(
                             id='shopping-new-price',
                             type="number",
+                            placeholder='Price...',
                             # pattern=r"\d{1,3}[,.]{0,1}\d{0,2}",  # ignored in number input
                         )
                     ]
                 ),
                 html.Div(
-                    className='two columns',
+                    className='one columns',
                     children=[
                         html.H6("Shop:", className='form__header')
                     ]
@@ -774,44 +764,128 @@ def layout_shopping_add():
                     className='two columns',
                     children=[
                         html.Datalist(
-                            id='shopping-new-shop-previous',
-                            children=[html.Option(value=val) for val in sql_data.get_unique_shopping_shops().Shop],
+                            id='shopping-shops-list',
                         ),
                         dcc.Input(
                             id='shopping-new-shop',
                             placeholder="Shop...",
-                            list='shopping-new-shop-previous',
+                            list='shopping-shops-list',
                             # pattern=r"\d{1,3}[,.]{0,1}\d{0,2}",  # ignored in number input
-                            style={
-                                'backgroundColor': COLORS['light-background'],
-                                'color': COLORS['main'],
-                                'border': f"2px solid {COLORS['main']}",
-                                'border-radius': '4px',
-                                'padding': '6px 10px',
-                            },
+                        )
+                    ]
+                ),
+                html.Div(
+                    className='one columns',
+                    children=[
+                        html.Button(
+                            "Add another Item",
+                            id='shopping-new-item-button',
                         )
                     ]
                 ),
             ],
         ),
+        html.Br(),
+        html.Datalist(
+            id='shopping-items-list',
+        ),
         html.Div(
-            className='row',
+            id='shopping-add-items-list',
+            className='shopping__add__items',
             children=[
                 html.Div(
-                    className='six columns',
+                    className='row add__items',
                     children=[
-                        html.H6("")
+                        html.Div(
+                            className='offset-by-two two columns',
+                            children=[
+                                dcc.Input(
+                                    id={
+                                        'type': 'shopping-new-item',
+                                        'id': n,
+                                    },
+                                    placeholder="Item...",
+                                    list='shopping-items-list',
+                                )
+                            ]
+                        ),
+                        html.Div(
+                            className='two columns',
+                            children=[
+                                dcc.Input(
+                                    id={
+                                        'type': 'shopping-new-item-price',
+                                        'id': n,
+                                    },
+                                    placeholder="Item Price...",
+                                    type='number',
+                                )
+                            ]
+                        ),
+                        html.Div(
+                            className='two columns',
+                            children=[
+                                dcc.Input(
+                                    id={
+                                        'type': 'shopping-new-item-note',
+                                        'id': n,
+                                    },
+                                    placeholder="Note...",
+                                )
+                            ]
+                        ),
+                        html.Div(
+                            className='offset-by-one column one column',
+                            children=[
+                                html.Button(
+                                    "Remove Item",
+                                    id={
+                                        'type': 'shopping-remove-item',
+                                        'id': n,
+                                    },
+                                )
+                            ]
+                        ),
+                    ],
+                )
+                for n in range(0, N_SHOPPING_ITEMS)
+            ]
+        ),
+        html.Br(),
+        html.Div(
+            className='row shopping__add__submit',
+            children=[
+                html.Div(
+                    className='offset-by-one-third column two columns',
+                    children=[
+                        html.Button(
+                            'Submit',
+                            id='shopping-submit-list',
+                        )
                     ]
                 ),
                 html.Div(
-                    className='six columns',
+                    className='two columns',
                     children=[
-                        
+                        html.Button(
+                            'Clear',
+                            id='shopping-clear-list',
+                        )
                     ]
                 ),
-            ],
+                html.Div(
+                    className='three columns',
+                    children=[
+                        dbc.Alert(
+                            id='shopping-status-alert',
+                            duration=10000,
+                            fade=True,
+                        ),
+                    ]
+                ),
+            ]
         ),
-    ])
+    ], className='shopping__add__container')
 
 
 def get_states(sub_color, active_color, load_color):
@@ -940,7 +1014,9 @@ def render_mqtt_content(tab):
               [Input('shopping-main-tabs', 'value')])
 def render_shopping_content(tab):
     if tab == 'shopping-overview-tab':
-        layout = layout_shopping_overview()
+        layout = dcc.Loading(id="loading-2", color=COLORS['foreground'], children=[
+                layout_shopping_overview()
+            ], type="default")
     elif tab == 'shopping-add-tab':
         layout = layout_shopping_add()
     return layout
@@ -1040,7 +1116,7 @@ def update_day_graph(interval, overview_values):
             'paper_bgcolor': COLORS['background'],
             'plot_bgcolor': COLORS['background'],
             'font': {
-                'color': COLORS['foreground']
+                'color': COLORS['foreground-dark']
             },
             'margin': {'l': 30, 'b': 30, 'r': 10, 't': 10},
             # 'width': '100%',
@@ -1086,7 +1162,7 @@ def update_history_graph(start_date, end_date):
                 'paper_bgcolor': COLORS['background'],
                 'plot_bgcolor': COLORS['background'],
                 'font': {
-                    'color': COLORS['foreground']
+                    'color': COLORS['foreground-dark']
                 },
                 'margin': {'l': 30, 'b': 30, 'r': 10, 't': 10},
                 # 'width': '100%',
@@ -1115,25 +1191,25 @@ def sanitize_topic(topic):
     if topic:
         if mqtt_live.sanitize_topic(topic):
             style = {
-                'backgroundColor': COLORS['light-background'],
-                'color': COLORS['main'],
+                'backgroundColor': COLORS['background-medium'],
+                'color': COLORS['foreground'],
                 'border': f"2px solid {COLORS['green']}",
                 'border-radius': '4px',
                 'padding': '6px 10px',
             }
         else:
             style = {
-                'backgroundColor': COLORS['light-background'],
-                'color': COLORS['main'],
+                'backgroundColor': COLORS['background-medium'],
+                'color': COLORS['foreground'],
                 'border': f"2px solid {COLORS['red']}",
                 'border-radius': '4px',
                 'padding': '6px 10px',
             }
     else:
         style = {
-            'backgroundColor': COLORS['light-background'],
-            'color': COLORS['main'],
-            'border': f"2px solid {COLORS['main']}",
+            'backgroundColor': COLORS['background-medium'],
+            'color': COLORS['foreground'],
+            'border': f"2px solid {COLORS['foreground']}",
             'border-radius': '4px',
             'padding': '6px 10px',
         }
@@ -1247,5 +1323,257 @@ def disk_state(interval):
     )
 
 
+@APP.callback(
+    Output('shopping-overview-graph', 'figure'),
+    [Input("loading-shopping-overview-graph", 'loading_state')]
+)
+def get_shopping_total_overview(state):
+    df_days = sql_data.get_unique_shopping_days()
+    shops = sql_data.get_unique_shopping_shops()
+    shops = shops.sort_values('Shop')
+
+    data = []
+    for shop in shops.Shop:
+        expense = sql_data.get_shopping_expenses_per_shop(shop)
+        df_days = df_days.join(expense)
+        data.append(go.Bar(
+            name=shop,
+            x=df_days.index,
+            y=df_days[shop],
+            hovertemplate="%{x|%d.%m.%Y} : %{y:.2f}€",
+            marker={
+                'line': {
+                    'width': 0,
+                    'color': COLORS['background'],
+                }
+            }
+        ))
+
+    fig = go.Figure(data=data)
+    fig.update_layout(
+        barmode='stack',
+        autosize=True,
+        legend={
+            'orientation': 'h',
+        },
+        font={
+            'color': COLORS['foreground'],
+        },
+        colorway=COLORS['colorway'],
+        paper_bgcolor=COLORS['background'],
+        plot_bgcolor=COLORS['background'],
+        coloraxis={
+            'colorbar': {
+                'outlinewidth': 0,
+                'bordercolor': COLORS['background'],
+                'bgcolor': COLORS['background'],
+            },
+        },
+    )
+    return fig
+
+
+@APP.callback(
+    Output('shopping-shops-store', 'data'),
+    [Input('shopping-shops-store', 'modified_timestamp')],
+    [State('shopping-shops-store', 'data')],
+)
+def init_shops_store(last_modified, data):
+    return [html.Option(value=val) for val in sql_data.get_unique_shopping_shops().Shop]
+
+
+@APP.callback(
+    Output('shopping-shops-list', 'children'),
+    [Input('shopping-shops-store', 'data')]
+)
+def get_shopping_shops(data):
+    logger.debug(f"Shops from store requested.")
+    return data
+
+
+@APP.callback(
+    Output('shopping-products-store', 'data'),
+    [Input('shopping-products-store', 'modified_timestamp')],
+    [State('shopping-products-store', 'data')],
+)
+def init_products_store(last_modified, data):
+    return [html.Option(value=val) for val in sql_data.get_unique_shopping_items().Product]
+
+
+@APP.callback(
+    Output(f'shopping-items-list', 'children'),
+    [Input('shopping-products-store', 'data')],
+)
+def get_shopping_products(data):
+    return data
+
+
+@APP.callback(
+    Output('shopping-add-items-list', 'children'),
+    [Input('shopping-new-item-button', 'n_clicks'),
+     Input({'type': 'shopping-remove-item', 'id': ALL}, 'n_clicks')],
+    [State('shopping-add-items-list', 'children')]
+)
+def shopping_manage_items(n_clicks, indexes, old_shopping_add_list):
+    logger.info(f"Update Shopping items list called.")
+    logger.info(f"      Indexes: {indexes}.")
+
+    if any(indexes):
+        # Remove item from list
+        list_items_to_remove = [idx for idx, value in enumerate(indexes) if value]
+        for index in list_items_to_remove:
+            old_shopping_add_list.pop(index)
+        return old_shopping_add_list
+
+    if n_clicks is None:
+        raise PreventUpdate
+
+    # Add a new list item
+    return old_shopping_add_list + [
+        html.Div(
+            className='row add__items',
+            children=[
+                html.Div(
+                    className='offset-by-two two columns',
+                    children=[
+                        dcc.Input(
+                            id={
+                                'type': 'shopping-new-item',
+                                'id': n_clicks+N_SHOPPING_ITEMS-1,
+                            },
+                            placeholder="Item...",
+                            list='shopping-items-list',
+                        )
+                    ]
+                ),
+                html.Div(
+                    className='two columns',
+                    children=[
+                        dcc.Input(
+                            id={
+                                'type': 'shopping-new-item-price',
+                                'id': n_clicks+N_SHOPPING_ITEMS-1,
+                            },
+                            placeholder="Item Price...",
+                            type='number',
+                        )
+                    ]
+                ),
+                html.Div(
+                    className='two columns',
+                    children=[
+                        dcc.Input(
+                            id={
+                                'type': 'shopping-new-item-note',
+                                'id': n_clicks+N_SHOPPING_ITEMS-1,
+                            },
+                            placeholder="Note...",
+                        )
+                    ]
+                ),
+                html.Div(
+                    className='offset-by-one column one column',
+                    children=[
+                        html.Button(
+                            "Remove Item",
+                            id={
+                                'type': 'shopping-remove-item',
+                                'id': n_clicks+N_SHOPPING_ITEMS-1,
+                            },
+                        )
+                    ]
+                ),
+            ],
+        ),
+    ]
+
+
+@APP.callback(
+    [Output('shopping-status-alert', 'children'),
+     Output('shopping-status-alert', 'className'),
+     Output('shopping-status-alert', 'is_open')],
+    [Input('shopping-submit-list', 'n_clicks')],
+    [State('shopping-new-list-date', 'date'),
+     State('shopping-new-price', 'value'),
+     State('shopping-new-shop', 'value'),
+     State({'type': 'shopping-new-item', 'id': ALL}, 'value'),
+     State({'type': 'shopping-new-item-price', 'id': ALL}, 'value'),
+     State({'type': 'shopping-new-item-note', 'id': ALL}, 'value')]
+)
+def save_shopping_list(submit_clicks, date, price, shop, items, prices, notes):
+    logger.debug(f"Save shopping list called. button clicks: {submit_clicks}.")
+    logger.debug(f"Items: {date, price, shop, items, prices, notes}.")
+    if submit_clicks is None:
+        return "", "", False
+
+    shopping_list_prelim = pd.DataFrame(data={
+        'Date': datetime.strptime(date, '%Y-%m-%d') if date else None,
+        'Payment': float(price) if price else None,
+        'Shop': shop,
+        'Product': items,
+        'Price': prices,
+        'Note': notes,
+    })
+    logger.debug(f"prelim: {shopping_list_prelim}.")
+    shopping_list = shopping_list_prelim.dropna(subset=['Product', 'Price'], how='all')
+    logger.debug(f"after drop: {shopping_list}.")
+    if shopping_list.empty:
+        return "Pelase add at least one product to the list.", "shopping_status_alert_warning", True
+
+    bad_entry_list = []
+    if shopping_list.Date.isna().any():
+        bad_entry_list.append(html.Li("Date is missing."))
+    if shopping_list.Payment.isna().any():
+        bad_entry_list.append(html.Li("Sum total is missing."))
+    if shopping_list.Shop.isna().any():
+        bad_entry_list.append(html.Li("Shop is missing."))
+    if shopping_list.Product.isna().any():
+        missing_products = shopping_list.Product.isna()
+        bad_prices = [str(pproduct) for pproduct in shopping_list.Price[missing_products].tolist()]
+        bad_entry_list.append(html.Li("These Products' price is missing: " + ", ".join(bad_prices)))
+    if shopping_list.Price.isna().any():
+        missing_prices = shopping_list.Price.isna()
+        bad_products = [str(pprice) for pprice in shopping_list.Product[missing_prices].tolist()]
+        bad_entry_list.append(html.Li("These Products' price is missing: " + ", ".join(bad_products)))
+
+    if bad_entry_list:
+        children = [html.H6("Can't add shopping list:"), html.Ul(bad_entry_list)]
+        return children, "shopping_status_alert_fail", True
+    else:
+        logger.debug(f"Pandas Dataframe Shopping List: {shopping_list}")
+        sql_data.add_shopping_list(shopping_list)
+        return "Successfully added shopping list", "shopping_status_alert_success", True
+
+
+@APP.callback(
+    [Output('shopping-new-price', 'value'),
+     Output('shopping-new-shop', 'value'),
+     Output({'type': 'shopping-new-item', 'id': ALL}, 'value'),
+     Output({'type': 'shopping-new-item-price', 'id': ALL}, 'value'),
+     Output({'type': 'shopping-new-item-note', 'id': ALL}, 'value')],
+    [Input('shopping-clear-list', 'n_clicks')],
+    [State({'type': 'shopping-new-item', 'id': ALL}, 'value'),
+     State('shopping-save-clear-clicks', 'data')]
+)
+def clear_shopping_list(n_clicks, items, old_clicks):
+    logger.info(f"Clear Shopping item values called. clicks: new: {n_clicks} old: {old_clicks}.")
+    if n_clicks is None or n_clicks <= old_clicks['clicks']:
+        raise PreventUpdate
+    empty = ['' for _ in items]
+    return '', '', empty, empty, empty
+
+
+@APP.callback(
+    Output('shopping-save-clear-clicks', 'data'),
+    [Input('shopping-clear-list', 'n_clicks')],
+)
+def init_shopping_clear_clicks_store(n_clicks):
+    logger.debug(f"Clicks store: click {n_clicks}")
+    if n_clicks is None:
+        return {'clicks': 0}
+    else:
+        return {'clicks': n_clicks}
+
+
 if __name__ == "__main__":
-    APP.run_server(debug=True, port=5002, host='0.0.0.0')
+    APP.run_server(debug=True, port=5002, host='0.0.0.0', threaded=True)
