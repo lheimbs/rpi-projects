@@ -12,18 +12,8 @@ from datetime import datetime
 import sql_data
 import rf_handler
 
-parser = argparse.ArgumentParser(__name__)
-levels = ('DEBUG', 'INFO', 'WARNING', 'ERROR', 'CRITICAL')
-parser.add_argument('--log-level', default='INFO', choices=levels)
-options = parser.parse_args()
 
-logging.basicConfig(
-    level=options.log_level,
-    format="%(asctime)s - %(module)s - %(levelname)s : %(message)s",
-    datefmt="%d.%m.%Y %H:%M:%S",
-)
-
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('dashboard.mqtt_handler')
 IS_CHARGING = False
 
 
@@ -137,7 +127,6 @@ def main():
     # connect to broker
     client = connect(client)
 
-    run = True
     while client:
         client.loop()
 
