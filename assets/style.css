@@ -82,6 +82,11 @@ div {
     color: var(--error);
 }
 
+/* Shopping overview graph height */
+.shopping__daily_graph>.js-plotly-plot {
+    height: 40vh !important;
+}
+
 .general__services {
     display: flex;
     flex-direction: row;
