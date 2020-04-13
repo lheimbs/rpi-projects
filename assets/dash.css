@@ -25,6 +25,42 @@ DataTable cell selection
     /* --muted: #c8c8c8; */
 }
 
+/* 
+SingleDatePicker
+*/
+.SingleDatePickerInput__withBorder {
+    border-radius: 2px;
+    border: 2px solid var(--foreground);
+    background-color: var(--background-medium);
+}
+
+.SingleDatePicker_picker__fullScreenPortal {
+    background-color: var(--background);
+}
+
+/* 
+Bootstraps Components
+Toast
+*/
+.toast {
+    position: fixed;
+    top: 35%;
+    left: 5%;
+    width: 300px;
+    max-width: 300px;
+    padding: 1%;
+    /* overflow: hidden; */
+    /* font-size: 0.875rem; */
+    background-color: var(--background-light) !important;
+    background-clip: padding-box;
+    border: 1px solid rgba(0, 0, 0, 0.2);
+    -webkit-box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+    box-shadow: 0 0.25rem 0.75rem rgba(0, 0, 0, 0.1);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+    /* opacity: 0; */
+    border-radius: 0.5rem;
+}
 
 /*
 Checklist padding

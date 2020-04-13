@@ -1,8 +1,9 @@
 
 body {
-    font-family: "Open Sans", sans-serif;
+    /* font-family: "Open Sans", sans-serif; */
     background-color: var(--background);
     margin: 0pt;
+    min-width: 100%;
 }
 
 /*
@@ -42,6 +43,44 @@ div {
     border: 0px solid var(--border-dark);
 }
 
+
+.shopping__add__container {
+    height: 100%;
+}
+
+.shopping__add__items {
+    max-height: 70vh;
+    overflow-y: auto;
+}
+
+
+.shopping__add__submit {
+    padding: 1%;
+}
+
+.shopping_status_alert_success {
+    border: 1px solid var(--border-medium);
+    border-radius: 5px;
+    padding: 10px;
+    text-align: center;
+    color: var(--success);
+}
+
+.shopping_status_alert_warning {
+    border: 1px solid var(--border-medium);
+    border-radius: 5px;
+    padding: 10px;
+    text-align: center;
+    color: var(--orange);
+}
+
+.shopping_status_alert_fail {
+    border: 1px solid var(--border-medium);
+    border-radius: 5px;
+    padding: 10px;
+    text-align: center;
+    color: var(--error);
+}
 
 .general__services {
     display: flex;
@@ -117,10 +156,6 @@ div {
 
 .temp__hist {
     margin: 5px;
-}
-
-.data__hist__item {
-    margin: 1%;
 }
 
 .overview__current__gauges {

@@ -1,7 +1,7 @@
 
 :root {
     --foreground: #7FDBFF;
-    
+    --foreground-dark: #123456;
     
     --background: #111111;
     --background-medium: #252525;
@@ -17,4 +17,5 @@
     --orange: rgb(255, 115, 0);
 
     --error: #960c0c;
+    --success: #17960c;
 }
