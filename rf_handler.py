@@ -16,7 +16,7 @@ CODES = {
 }
 SEND_PATH = "/home/pi/utils/433Utils/RPi_utils/send"
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('dashboard.rf_handler')
 
 def turn_socket_on(socketnr, method):
     if socketnr not in CODES.keys():
