@@ -17,7 +17,7 @@ MAX_DATETIME = pandas.Timestamp.now()
 MIN_DATETIME = pandas.Timestamp("2019-07-01-T00")
 VALUE_TYPES = ['temperature', 'humidity', 'pressure', 'altitude', 'brightness']
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('dashboard.sql_data')
 
 
 def get_max_value(value_type):
@@ -310,6 +310,19 @@ def get_unique_shopping_shops():
             con=connection
         )
     return shops
+
+
+def get_unique_shopping_items():
+    logger.debug("Get unique Products from table 'shopping'.")
+    with sqlite3.connect(
+        DATABASE,
+        detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
+    ) as connection:
+        items = pandas.read_sql(
+            "SELECT DISTINCT Product FROM 'shopping'",
+            con=connection
+        )
+    return items
 
 
 def get_day_shop_expenses(day, shop):
