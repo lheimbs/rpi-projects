@@ -7,12 +7,7 @@ import logging
 from psutil._common import bytes2human
 
 
-logging.basicConfig(
-    level='DEBUG',
-    format="%(asctime)s - %(module)s - %(levelname)s : %(message)s",
-    datefmt="%d.%m.%Y %H:%M:%S",
-)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('dashboard.pi_data')
 
 
 def get_service_data(service, user=True):
