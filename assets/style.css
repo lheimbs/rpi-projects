@@ -83,6 +83,7 @@ div {
 }
 
 /* Shopping overview graph height */
+.shopping__monthly_graph>.js-plotly-plot,
 .shopping__daily_graph>.js-plotly-plot {
     height: 40vh !important;
 }
