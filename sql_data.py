@@ -2,19 +2,19 @@
 # coding=utf-8
 
 import sqlite3
-import pandas
+import pandas as pd
 import logging
 from datetime import datetime, timedelta
 
-DATABASE = 'data.db'
+DATABASE = '/home/pi/projects/rpi-projects/data.db'
 TABLE = 'room-data'
 DATETIME = 'datetime'
 TEMPERATURE = 'temperature'
 MAX_VAL = 9999
 MIN_VAL = -9999
 LAST_VAL = 0
-MAX_DATETIME = pandas.Timestamp.now()
-MIN_DATETIME = pandas.Timestamp("2019-07-01-T00")
+MAX_DATETIME = pd.Timestamp.now()
+MIN_DATETIME = pd.Timestamp("2019-07-01-T00")
 VALUE_TYPES = ['temperature', 'humidity', 'pressure', 'altitude', 'brightness']
 
 logger = logging.getLogger('dashboard.sql_data')
@@ -90,7 +90,7 @@ def get_min_datetime():
     with sqlite3.connect(DATABASE, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES) as connection:
         cursor = connection.cursor()
         logger.info("Query database for min value of column 'datetime' from table 'room-data'.")
-        min_datetime = pandas.Timestamp(cursor.execute("SELECT MIN(datetime) FROM 'room-data'").fetchone()[0])
+        min_datetime = pd.Timestamp(cursor.execute("SELECT MIN(datetime) FROM 'room-data'").fetchone()[0])
 
     logger.info("Found min datetime: {}.".format(min_datetime))
     return min_datetime
@@ -105,7 +105,7 @@ def get_day_temp():
         DATABASE, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
         logger.info("Query database for temperature-data of the last 24 hours using pandas read_sql().")
-        data = pandas.read_sql(
+        data = pd.read_sql(
             "SELECT datetime, temperature FROM 'room-data' WHERE datetime > ?",
             params=(query_datetime, ),
             parse_dates=['datetime'],
@@ -127,7 +127,7 @@ def get_day_data(values):
         DATABASE, detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
         logger.info(f"Query database for {', '.join(values)} of the last 24 hours using pandas read_sql().")
-        data = pandas.read_sql(
+        data = pd.read_sql(
             f"SELECT datetime, {', '.join(values)} FROM 'room-data' WHERE datetime > ?",
             params=(query_datetime, ),
             parse_dates=['datetime'],
@@ -145,7 +145,7 @@ def get_temp_history(start_time, end_time):
             detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
         logger.info("Query database for temperature-data of the last 24 hours using pandas read_sql().")
-        data = pandas.read_sql(
+        data = pd.read_sql(
             "SELECT datetime, temperature FROM 'room-data' WHERE datetime BETWEEN ? and ?;",
             params=(start_time, end_time),
             parse_dates=['datetime'],
@@ -163,9 +163,9 @@ def csv_to_db(filepath):
     dt = 'datetime'
 
     try:
-        res_df = pandas.read_csv(filepath, encoding="UTF-16")
+        res_df = pd.read_csv(filepath, encoding="UTF-16")
     except UnicodeError:
-        res_df = pandas.read_csv(filepath, encoding="UTF-8")
+        res_df = pd.read_csv(filepath, encoding="UTF-8")
     # res_df.insert(0, dt, pandas.to_datetime(res_df['date'] + " " + res_df['time']))
     res_df.insert(
         0,
@@ -220,7 +220,7 @@ def get_mqtt_messages():
             detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
         logger.info("Query database for all mqtt messages using pandas read_sql().")
-        data = pandas.read_sql(
+        data = pd.read_sql(
             "SELECT * FROM 'mqtt_messages' ORDER BY datetime DESC LIMIT 100;",
             parse_dates=['datetime'],
             con=connection
@@ -237,7 +237,7 @@ def get_mqtt_messages_by_topic(topics, limit=5000):
                 detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
         ) as connection:
             logger.info("Query database for all mqtt messages using pandas read_sql().")
-            data = pandas.read_sql(
+            data = pd.read_sql(
                 "SELECT * FROM 'mqtt_messages' WHERE topic = {} ORDER BY datetime DESC LIMIT {};".format(
                     ' or topic = '.join(['?' for _ in topics]),
                     limit
@@ -254,7 +254,7 @@ def get_mqtt_topics():
     topics = None
     with sqlite3.connect(DATABASE) as connection:
         logger.info("Query database all recorded mqtt topics using pandas read_sql().")
-        topics = pandas.read_sql(
+        topics = pd.read_sql(
             "SELECT distinct topic FROM 'mqtt_messages';",
             con=connection
         )
@@ -290,7 +290,7 @@ def get_unique_shopping_days():
         DATABASE,
         detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
-        days = pandas.read_sql(
+        days = pd.read_sql(
             "SELECT DISTINCT Date FROM 'shopping' ORDER BY DATE",
             parse_dates=['Date'],
             con=connection
@@ -305,7 +305,7 @@ def get_unique_shopping_shops():
         DATABASE,
         detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
-        shops = pandas.read_sql(
+        shops = pd.read_sql(
             "SELECT DISTINCT Shop FROM 'shopping'",
             con=connection
         )
@@ -318,7 +318,7 @@ def get_unique_shopping_items():
         DATABASE,
         detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
-        items = pandas.read_sql(
+        items = pd.read_sql(
             "SELECT DISTINCT Product FROM 'shopping'",
             con=connection
         )
@@ -332,7 +332,7 @@ def get_day_shop_expenses(day, shop):
         DATABASE,
         detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
-        expense = pandas.read_sql_query(
+        expense = pd.read_sql_query(
             "SELECT  sum(DISTINCT Payment) FROM 'shopping' WHERE Date = ? and Shop = ?;",
             params=(day_str, shop),
             con=connection
@@ -346,14 +346,28 @@ def get_shopping_expenses_per_shop(shop):
         DATABASE,
         detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
-        expense = pandas.read_sql_query(
-            "SELECT  DISTINCT Date, Payment FROM 'shopping' WHERE Shop = ?;",
+        expense = pd.read_sql_query(
+            "SELECT DISTINCT Date, Payment FROM 'shopping' WHERE Shop = ?;",
             params=(shop, ),
             parse_dates=['Date'],
             con=connection
         )
     expense_gouped = expense.groupby('Date')['Payment'].sum().rename(shop)
     return expense_gouped
+
+
+def get_shopping_expenses_by_date(start, end=None):
+    logger.debug(f"Get expenses from 'shopping' table between {start} and {end}.")
+    with sqlite3.connect(
+        DATABASE,
+        detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
+    ) as connection:
+        data = pd.read_sql(
+            "SELECT DISTINCT Date, Payment FROM 'shopping' WHERE Date BETWEEN ? AND ? ORDER BY Date;",
+            con=connection,
+            params=(start, end if end else datetime.now())
+        )
+    return data.groupby('Date').sum().reset_index()
 
 
 def get_shopping_complete():
@@ -365,7 +379,7 @@ def get_shopping_complete():
         DATABASE,
         detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
-        data = pandas.read_sql(
+        data = pd.read_sql(
             "SELECT * FROM 'shopping'",
             con=connection
         )
@@ -377,7 +391,9 @@ def get_gauge_data(value_type):
         raise ValueError(f"Invalid value '{value_type}'. Expected one of: {VALUE_TYPES}")
     with sqlite3.connect(DATABASE) as connection:
         cursor = connection.cursor()
-        logger.info(f"Query database for gauge data (min, max and last value) of column {value_type} from table 'room-data'.")
+        logger.info(
+            f"Query database for gauge data (min, max and last value) of column {value_type} from table 'room-data'."
+        )
         min_val = cursor.execute(f"SELECT MIN({value_type}) FROM 'room-data'").fetchone()[0]
         max_val = cursor.execute(f"SELECT MAX({value_type}) FROM 'room-data'").fetchone()[0]
         curr_val = cursor.execute(f"SELECT {value_type} FROM 'room-data' ORDER BY datetime DESC LIMIT 1").fetchone()[0]
