@@ -7,6 +7,7 @@ import dash_daq as daq
 import dash_core_components as dcc
 import dash_html_components as html
 import dash_table
+import numpy as np
 import pandas as pd
 import scipy.signal as signal
 import paho.mqtt.client as mqtt
@@ -14,9 +15,13 @@ import plotly.graph_objects as go
 import dash_bootstrap_components as dbc
 
 from math import ceil
+from copy import deepcopy
 from collections import deque
 from datetime import datetime
+from dateutil.relativedelta import relativedelta
+from dateutil.rrule import rrule, MONTHLY
 from flask import Flask
+from plotly.subplots import make_subplots
 from dash.dependencies import Input, Output, State, ALL  # , MATCH
 from dash.exceptions import PreventUpdate
 
@@ -45,6 +50,11 @@ COLORS = {
     'foreground-dark': '#123456',
     'background': '#111111',
     'background-medium': '#252525',
+    'border-light': '#d6d6d6',
+    'border-medium': '#333333',
+    'border-dark': '#0f0f0f',
+    'dark-1': '#222222',
+    'dark-2': '#333333',
     'red': 'red',
     'green': 'green',
     'error': '#960c0c',
@@ -686,7 +696,18 @@ def layout_shopping_overview():
             html.Div(
                 className='row',
                 children=[
-
+                    html.Div(
+                        dcc.Loading(id="loading-shopping-montly-graph", color=COLORS['foreground'], children=[
+                            dcc.Graph(
+                                id="shopping-month-graph",
+                                clear_on_unhover=True,
+                                config={
+                                    'staticPlot': False,
+                                },
+                                className="shopping__monthly_graph graph",
+                            ),
+                        ], type="default"),
+                    )
                 ],
             ),
             html.Div(
@@ -1324,6 +1345,96 @@ def disk_state(interval):
 
 
 @APP.callback(
+    Output('shopping-month-graph', 'figure'),
+    [Input("loading-shopping-overview-graph", 'loading_state')]
+)
+def get_shopping_monthly_overview(state):
+    now = datetime.now()
+    today = datetime(now.year, now.month, now.day)
+    dates_start = list(rrule(MONTHLY, bymonthday=(1,), dtstart=today-relativedelta(months=+6), until=datetime.now()))
+    dates_end = list(rrule(MONTHLY, bymonthday=(-1,), dtstart=today-relativedelta(months=+5), until=datetime.now()))
+    this_month = datetime(now.year, now.month, 1)
+
+    fig = make_subplots(specs=[[{"secondary_y": True}]])
+    for start, end in zip(dates_start, dates_end):
+        data = sql_data.get_shopping_expenses_by_date(start, end)
+        fig.add_trace(
+            go.Scatter(
+                mode='lines',
+                hovertemplate='%{y:.2f}€',
+                x=data.Date.dt.day,
+                y=data.Payment.cumsum(),
+                name=data.Date.iloc[0].month_name(),
+                yaxis='y2',
+            ),
+            secondary_y=False,
+        )
+    data = sql_data.get_shopping_expenses_by_date(this_month)
+    fig.add_trace(
+        go.Scatter(
+            mode='lines',
+            hovertemplate='%{y:.2f}€',
+            x=data.Date.dt.day,
+            y=data.Payment.cumsum(),
+            name=data.Date.iloc[0].month_name()
+        ),
+        secondary_y=False,
+    )
+    fig.add_trace(
+        go.Bar(
+            opacity=0.5,
+            hovertemplate='%{y:.2f}€',
+            x=data.Date.dt.day,
+            y=data.Payment,
+            name=data.Date.iloc[0].month_name()
+        ),
+        secondary_y=True,
+    )
+    fig.update_layout({
+        'autosize': True,
+        'barmode': 'stack',
+        'coloraxis': {
+            'colorbar': {
+                'outlinewidth': 0,
+                'bordercolor': COLORS['background'],
+                'bgcolor': COLORS['background'],
+            },
+        },
+        'colorway': COLORS['colorway'],
+        'font': {
+            'color': COLORS['foreground'],
+        },
+        'legend': {
+            'orientation': 'h',
+        },
+        'margin': {
+            'l': 10, 'r': 10, 't': 10, 'b': 10, 'pad': 0,
+        },
+        'paper_bgcolor': COLORS['background'],
+        'plot_bgcolor': COLORS['background'],
+        'xaxis': {
+            'fixedrange': True, 'rangemode': 'tozero',
+            'showline': True, 'linewidth': 1, 'linecolor': COLORS['border-medium'],
+            'showgrid': True, 'gridwidth': 1, 'gridcolor': COLORS['border-medium'],
+            'zeroline': True, 'zerolinewidth': 1, 'zerolinecolor': COLORS['border-medium'],
+        },
+        'yaxis': {
+            'fixedrange': True, 'rangemode': 'tozero',
+            'showline': True, 'linewidth': 1, 'linecolor': COLORS['border-medium'],
+            'showgrid': True, 'gridwidth': 1, 'gridcolor': COLORS['border-medium'],
+            'zeroline': True, 'zerolinewidth': 1, 'zerolinecolor': COLORS['border-medium'],
+        },
+        'yaxis2': {
+            'fixedrange': True, 'rangemode': 'tozero',
+            'showline': True, 'linewidth': 1, 'linecolor': COLORS['border-medium'],
+            'showgrid': True, 'gridwidth': 1, 'gridcolor': COLORS['border-medium'],
+            'zeroline': True, 'zerolinewidth': 1, 'zerolinecolor': COLORS['border-medium'],
+        },
+    })
+    return fig
+
+
+@APP.callback(
     Output('shopping-overview-graph', 'figure'),
     [Input("loading-shopping-overview-graph", 'loading_state')]
 )
@@ -1349,24 +1460,41 @@ def get_shopping_total_overview(state):
             }
         ))
 
-    fig = go.Figure(data=data)
-    fig.update_layout(
-        barmode='stack',
-        autosize=True,
-        legend={
-            'orientation': 'h',
-        },
-        font={
-            'color': COLORS['foreground'],
-        },
-        colorway=COLORS['colorway'],
-        paper_bgcolor=COLORS['background'],
-        plot_bgcolor=COLORS['background'],
-        coloraxis={
-            'colorbar': {
-                'outlinewidth': 0,
-                'bordercolor': COLORS['background'],
-                'bgcolor': COLORS['background'],
+    fig = go.Figure(
+        data=data,
+        layout={
+            'autosize': True,
+            'barmode': 'stack',
+            'coloraxis': {
+                'colorbar': {
+                    'outlinewidth': 0,
+                    'bordercolor': COLORS['background'],
+                    'bgcolor': COLORS['background'],
+                },
+            },
+            'colorway': COLORS['colorway'],
+            'font': {
+                'color': COLORS['foreground'],
+            },
+            'legend': {
+                'orientation': 'h',
+            },
+            'margin': {
+                'l': 10, 'r': 10, 't': 10, 'b': 10, 'pad': 0,
+            },
+            'paper_bgcolor': COLORS['background'],
+            'plot_bgcolor': COLORS['background'],
+            'xaxis': {
+                'fixedrange': True, 'rangemode': 'tozero',
+                'showline': True, 'linewidth': 1, 'linecolor': COLORS['border-medium'],
+                'showgrid': True, 'gridwidth': 1, 'gridcolor': COLORS['border-medium'],
+                'zeroline': True, 'zerolinewidth': 1, 'zerolinecolor': COLORS['border-medium'],
+            },
+            'yaxis': {
+                'fixedrange': True, 'rangemode': 'tozero',
+                'showline': True, 'linewidth': 1, 'linecolor': COLORS['border-medium'],
+                'showgrid': True, 'gridwidth': 1, 'gridcolor': COLORS['border-medium'],
+                'zeroline': True, 'zerolinewidth': 1, 'zerolinecolor': COLORS['border-medium'],
             },
         },
     )
@@ -1515,6 +1643,7 @@ def save_shopping_list(submit_clicks, date, price, shop, items, prices, notes):
         'Note': notes,
     })
     logger.debug(f"prelim: {shopping_list_prelim}.")
+    shopping_list = shopping_list_prelim.replace(r'^\s*$', np.nan, regex=True, inplace=True)
     shopping_list = shopping_list_prelim.dropna(subset=['Product', 'Price'], how='all')
     logger.debug(f"after drop: {shopping_list}.")
     if shopping_list.empty:
