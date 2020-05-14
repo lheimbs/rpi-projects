@@ -1,5 +1,5 @@
-#include <ESP8266WiFi.h> 
-#include <PubSubClient.h>  
+#include <ESP8266WiFi.h>
+#include <PubSubClient.h>
 
 const char* ssid = "022696";
 const char* password = TODO;
@@ -19,7 +19,6 @@ PubSubClient client(espClient);
 ADC_MODE(ADC_VCC);
 
 void setup_wifi() {
-
     delay(10);
     // We start by connecting to a WiFi network
     Serial.println();
