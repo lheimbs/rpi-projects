@@ -195,7 +195,7 @@ def add_room_data_to_db(date_time, temperature, humidity, brightness, pressure):
         cursor = connection.cursor()
         cursor.execute(insert_with_param, data_tuple)
         connection.commit()
-        logger.info("Data added successfully.")
+        logger.info("Room Data added successfully.")
 
 
 def add_mqtt_to_db(date_time, topic, message):
@@ -210,7 +210,7 @@ def add_mqtt_to_db(date_time, topic, message):
         cursor = connection.cursor()
         cursor.execute(insert_with_param, data_tuple)
         connection.commit()
-        logger.info("MQTT-Message '%s' added successfully.", message)
+        logger.info("MQTT-Message '%s' added successfully to database.", message)
 
 
 def get_mqtt_messages():
@@ -272,7 +272,7 @@ def add_probe_request(time, mac, make, ssid, ssid_uppercase, rssi):
         cursor = connection.cursor()
         cursor.execute(insert_with_param, data_tuple)
         connection.commit()
-        logger.info("Data added successfully.")
+        logger.info("Probe request added successfully.")
 
 
 def add_shopping_list(shopping_list):
@@ -282,6 +282,7 @@ def add_shopping_list(shopping_list):
             detect_types=sqlite3.PARSE_DECLTYPES | sqlite3.PARSE_COLNAMES
     ) as connection:
         shopping_list.to_sql('shopping', connection, if_exists='append', index=False)
+        logger.info("Shopping list added successfully.")
 
 
 def get_unique_shopping_days():
@@ -365,6 +366,7 @@ def get_shopping_expenses_by_date(start, end=None):
         data = pd.read_sql(
             "SELECT DISTINCT Date, Payment FROM 'shopping' WHERE Date BETWEEN ? AND ? ORDER BY Date;",
             con=connection,
+            parse_dates=['Date'],
             params=(start, end if end else datetime.now())
         )
     return data.groupby('Date').sum().reset_index()
@@ -398,6 +400,21 @@ def get_gauge_data(value_type):
         max_val = cursor.execute(f"SELECT MAX({value_type}) FROM 'room-data'").fetchone()[0]
         curr_val = cursor.execute(f"SELECT {value_type} FROM 'room-data' ORDER BY datetime DESC LIMIT 1").fetchone()[0]
     return min_val, max_val, curr_val
+
+
+def add_rf_data_to_db(curr_time, decimal, length, binary, pulse_length, protocol):
+    with sqlite3.connect(DATABASE) as connection:
+
+        # insert developer detail
+        insert_with_param = "INSERT INTO 'rf-data' "
+        insert_with_param += "(datetime, decimal, bits, binary, pulse_length, protocol) "
+        insert_with_param += "VALUES (?, ?, ?, ?, ?, ?);"
+        data_tuple = (curr_time, decimal, length, binary, pulse_length, protocol)
+
+        cursor = connection.cursor()
+        cursor.execute(insert_with_param, data_tuple)
+        connection.commit()
+        logger.info("Rf Data added successfully.")
 
 
 def log_to_db():
