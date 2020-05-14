@@ -235,10 +235,6 @@ def layout_data_overview():
             ),
             html.Div(
                 children=[
-                    #html.Div(
-                    #    id="current-data-headers",
-                    #    className='row',
-                    #),
                     html.Div(
                         id="current-data",
                         className='overview__current__gauges row',
@@ -325,7 +321,8 @@ def layout_data_graph():
                                     'handleDrag3d',
                                     'resetCameraDefault3d',
                                     'resetCameraLastSave3d',
-                                    'hoverClosest3d; (Geo) zoomInGeo',
+                                    'hoverClosest3d',
+                                    'zoomInGeo',
                                     'zoomOutGeo',
                                     'resetGeo',
                                     'hoverClosestGeo',
