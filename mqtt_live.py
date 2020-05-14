@@ -2,7 +2,6 @@
 
 import unicodedata
 import logging
-import socket
 import mqtt_handler
 from datetime import datetime
 from subprocess import Popen, PIPE, CalledProcessError
