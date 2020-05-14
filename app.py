@@ -15,19 +15,24 @@ import plotly.graph_objects as go
 import dash_bootstrap_components as dbc
 
 from math import ceil
-from copy import deepcopy
+from calendar import month_name
 from collections import deque
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
-from dateutil.rrule import rrule, MONTHLY
 from flask import Flask
 from plotly.subplots import make_subplots
 from dash.dependencies import Input, Output, State, ALL  # , MATCH
 from dash.exceptions import PreventUpdate
 
+import graph_helper
 import pi_data
 import sql_data
-import mqtt_live
+try:
+    import mqtt_live
+    ENABLE_LIVE = True
+except ImportError:
+    ENABLE_LIVE = False
+
 
 logging.basicConfig(
     level=logging.DEBUG,
@@ -61,14 +66,14 @@ COLORS = {
     'success': '#17960c',
     'colorway': [
         '#fc5c65',
-        '#45aaf2',
-        '#fd9644',
-        '#4b7bec',
-        '#fed330',
-        '#a55eea',
         '#26de81',
-        '#d1d8e0',
+        '#fd9644',
         '#2bcbba',
+        '#a55eea',
+        '#bff739',
+        '#45aaf2',
+        '#fed330',
+        '#4b7bec',
         '#778ca3',
         '#eb3b5a',
         '#2d98da',
@@ -230,10 +235,10 @@ def layout_data_overview():
             ),
             html.Div(
                 children=[
-                    html.Div(
-                        id="current-data-headers",
-                        className='row',
-                    ),
+                    #html.Div(
+                    #    id="current-data-headers",
+                    #    className='row',
+                    #),
                     html.Div(
                         id="current-data",
                         className='overview__current__gauges row',
@@ -304,32 +309,32 @@ def layout_data_graph():
                             id="data-history-graph",
                             figure=EMPTY_GRAPH,
                             config={
-                                        'staticPlot': False,
-                                        'showSendToCloud': False,
-                                        'showLink': False,
-                                        'displaylogo': False,
-                                        'modeBarButtonsToRemove':
-                                        [
-                                            'sendDataToCloud',
-                                            'hoverClosestCartesian',
-                                            'hoverCompareCartesian',
-                                            'zoom3d',
-                                            'pan3d',
-                                            'orbitRotation',
-                                            'tableRotation',
-                                            'handleDrag3d',
-                                            'resetCameraDefault3d',
-                                            'resetCameraLastSave3d',
-                                            'hoverClosest3d; (Geo) zoomInGeo',
-                                            'zoomOutGeo',
-                                            'resetGeo',
-                                            'hoverClosestGeo',
-                                            'hoverClosestGl2d',
-                                            'hoverClosestPie',
-                                            'toggleSpikelines',
-                                            'toImage'
-                                        ],
-                                    },
+                                'staticPlot': False,
+                                'showSendToCloud': False,
+                                'showLink': False,
+                                'displaylogo': False,
+                                'modeBarButtonsToRemove':
+                                [
+                                    'sendDataToCloud',
+                                    'hoverClosestCartesian',
+                                    'hoverCompareCartesian',
+                                    'zoom3d',
+                                    'pan3d',
+                                    'orbitRotation',
+                                    'tableRotation',
+                                    'handleDrag3d',
+                                    'resetCameraDefault3d',
+                                    'resetCameraLastSave3d',
+                                    'hoverClosest3d; (Geo) zoomInGeo',
+                                    'zoomOutGeo',
+                                    'resetGeo',
+                                    'hoverClosestGeo',
+                                    'hoverClosestGl2d',
+                                    'hoverClosestPie',
+                                    'toggleSpikelines',
+                                    'toImage'
+                                ],
+                            },
                             className="graph",
                         )
                     ], type="default"),
@@ -345,9 +350,9 @@ def layout_general():
     return html.Div(
         [
             dcc.Interval(
-                        id="general-stats-update",
-                        interval=int(STATS_INTERVAL),
-                        n_intervals=0,
+                id="general-stats-update",
+                interval=int(STATS_INTERVAL),
+                n_intervals=0,
             ),
             html.Div(
                 className='row',
@@ -572,92 +577,96 @@ def layout_mqtt_messages():
 
 
 def layout_mqtt_live():
-    return html.Div(
-        className='row',
-        children=[
-            html.Div(
-                className='two columns settings',
-                children=[
-                    html.Datalist(
-                        id='mqtt-topic-recent',
-                        children=[html.Option(value=val) for val in sql_data.get_mqtt_topics()],
-                    ),
-                    dcc.Input(
-                        id='mqtt-topic-input',
-                        list='mqtt-topic-recent',
-                        placeholder="Topic...",
-                        style={
-                            'backgroundColor': COLORS['background-medium'],
-                            'color': COLORS['foreground'],
-                            'border': f"2px solid {COLORS['foreground']}",
-                            'border-radius': '4px',
-                            'padding': '6px 10px',
-                        },
-                    ),
-                    html.Button('Subscribe', id='mqtt-live-subscribe'),
-                    html.Hr(),
-                    html.Button(
-                        'Start',
-                        id='mqtt-live-start',
-                        disabled=False,
-                        className='start__stop__button',
-                    ),
-                    html.Button('Stop', id='mqtt-live-stop', disabled=True, className='start__stop__button'),
-                    html.Hr(),
-                    html.Div(id='mqtt-live-sub-status'),
-                ],
-            ),
-            html.Div(
-                className='ten columns settings',
-                children=[
-                    dcc.Interval(id='mqtt-live-interval', interval=500),
-                    dash_table.DataTable(
-                        id='live-table',
-                        columns=[
-                            {"name": 'Date', "id": 'date'},
-                            {"name": 'Time', "id": 'time'},
-                            {"name": 'Topic', "id": 'topic'},
-                            {"name": 'Quality of Service', "id": 'qos'},
-                            {"name": 'Payload', "id": 'payload'},
-                        ],
-                        data=[],
-                        editable=False,
-                        fill_width=False,
-                        page_action="native",
-                        page_current=0,
-                        page_size=20,
-                        style_as_list_view=True,
-                        is_focused=False,
-                        style_header={
-                            'backgroundColor': COLORS['background-medium'],
-                            'fontWeight': 'bold'
-                        },
-                        style_cell={
-                            'padding': '5px',
-                            'textAlign': 'center',
-                            'backgroundColor': COLORS['background'],
-                        },
-                        style_cell_conditional=[
-                            {
-                                'if': {'column_id': 'payload'},
-                                'textAlign': 'left'
-                            }
-                        ],
-                        style_data={
-                            'whiteSpace': 'normal',
-                            'height': 'auto'
-                        },
-                        style_data_conditional=[
-                            {
-                                'if': {'row_index': 'odd'},
-                                'backgroundColor': COLORS['background-medium']
-                            }
-                        ],
-                    ),
-                ],
-            ),
-        ],
-    )
+    if ENABLE_LIVE:
+        live = html.Div(
+            className='row',
+            children=[
+                html.Div(
+                    className='two columns settings',
+                    children=[
+                        html.Datalist(
+                            id='mqtt-topic-recent',
+                            children=[html.Option(value=val) for val in sql_data.get_mqtt_topics()],
+                        ),
+                        dcc.Input(
+                            id='mqtt-topic-input',
+                            list='mqtt-topic-recent',
+                            placeholder="Topic...",
+                            style={
+                                'backgroundColor': COLORS['background-medium'],
+                                'color': COLORS['foreground'],
+                                'border': f"2px solid {COLORS['foreground']}",
+                                'border-radius': '4px',
+                                'padding': '6px 10px',
+                            },
+                        ),
+                        html.Button('Subscribe', id='mqtt-live-subscribe'),
+                        html.Hr(),
+                        html.Button(
+                            'Start',
+                            id='mqtt-live-start',
+                            disabled=False,
+                            className='start__stop__button',
+                        ),
+                        html.Button('Stop', id='mqtt-live-stop', disabled=True, className='start__stop__button'),
+                        html.Hr(),
+                        html.Div(id='mqtt-live-sub-status'),
+                    ],
+                ),
+                html.Div(
+                    className='ten columns settings',
+                    children=[
+                        dcc.Interval(id='mqtt-live-interval', interval=500),
+                        dash_table.DataTable(
+                            id='live-table',
+                            columns=[
+                                {"name": 'Date', "id": 'date'},
+                                {"name": 'Time', "id": 'time'},
+                                {"name": 'Topic', "id": 'topic'},
+                                {"name": 'Quality of Service', "id": 'qos'},
+                                {"name": 'Payload', "id": 'payload'},
+                            ],
+                            data=[],
+                            editable=False,
+                            fill_width=False,
+                            page_action="native",
+                            page_current=0,
+                            page_size=20,
+                            style_as_list_view=True,
+                            is_focused=False,
+                            style_header={
+                                'backgroundColor': COLORS['background-medium'],
+                                'fontWeight': 'bold'
+                            },
+                            style_cell={
+                                'padding': '5px',
+                                'textAlign': 'center',
+                                'backgroundColor': COLORS['background'],
+                            },
+                            style_cell_conditional=[
+                                {
+                                    'if': {'column_id': 'payload'},
+                                    'textAlign': 'left'
+                                }
+                            ],
+                            style_data={
+                                'whiteSpace': 'normal',
+                                'height': 'auto'
+                            },
+                            style_data_conditional=[
+                                {
+                                    'if': {'row_index': 'odd'},
+                                    'backgroundColor': COLORS['background-medium']
+                                }
+                            ],
+                        ),
+                    ],
+                ),
+            ],
+        )
+    else:
+        live = "Live mqtt data not avaliable!"
+    return live
 
 
 def layout_shopping():
@@ -697,17 +706,64 @@ def layout_shopping_overview():
                 className='row',
                 children=[
                     html.Div(
-                        dcc.Loading(id="loading-shopping-montly-graph", color=COLORS['foreground'], children=[
-                            dcc.Graph(
-                                id="shopping-month-graph",
-                                clear_on_unhover=True,
-                                config={
-                                    'staticPlot': False,
-                                },
-                                className="shopping__monthly_graph graph",
+                        className='six columns',
+                        children=[
+                            dcc.Loading(id="loading-shopping-montly-graph", color=COLORS['foreground'], children=[
+                                dcc.Graph(
+                                    id="shopping-month-graph",
+                                    clear_on_unhover=True,
+                                    config={
+                                        'staticPlot': False,
+                                        'displayModeBar': False,
+                                    },
+                                    className="shopping__monthly_graph graph",
+                                ),
+                            ], type="default"),
+                        ],
+                    ),
+                    html.Div(
+                        className='three columns',
+                        children=[
+                            dcc.Loading(
+                                id="loading-shopping-expenses-type-graph",
+                                color=COLORS['foreground'],
+                                children=[
+                                    dcc.Graph(
+                                        id="shopping-expenses-type-graph",
+                                        clear_on_unhover=True,
+                                        config={
+                                            'staticPlot': False,
+                                            'displayModeBar': False,
+                                            'displaylogo': False,
+                                        },
+                                        className="shopping__expenses__type_graph graph",
+                                    ),
+                                ],
+                                type="default"
                             ),
-                        ], type="default"),
-                    )
+                        ],
+                    ),
+                    html.Div(
+                        className='three columns',
+                        children=[
+                            dcc.Loading(
+                                id="loading-shopping-nutrition-type-graph",
+                                color=COLORS['foreground'],
+                                children=[
+                                    dcc.Graph(
+                                        id="shopping-nutrition-type-graph",
+                                        clear_on_unhover=True,
+                                        config={
+                                            'staticPlot': False,
+                                            'displayModeBar': False,
+                                        },
+                                        className="shopping__nutrition__type_graph graph",
+                                    ),
+                                ],
+                                type="default"
+                            ),
+                        ],
+                    ),
                 ],
             ),
             html.Div(
@@ -719,6 +775,15 @@ def layout_shopping_overview():
                             clear_on_unhover=True,
                             config={
                                 'staticPlot': False,
+                                'displaylogo': False,
+                                'modeBarButtonsToRemove': [
+                                    'select2d', 'lasso2d', 'autoScale2d',   # 2D
+                                    'hoverClosest3d',   # 3D
+                                    'hoverClosestCartesian', 'hoverCompareCartesian',   # Cartesian
+                                    'zoomInGeo', 'zoomOutGeo', 'resetGeo', 'hoverClosestGeo',   # Geo
+                                    'hoverClosestGl2d', 'hoverClosestPie', 'toggleHover', 'resetViews',     # other
+                                    'toImage', 'toggleSpikelines', 'resetViewMapbox',   # other
+                                ],
                             },
                             className="shopping__daily_graph graph",
                         ),
@@ -1036,14 +1101,14 @@ def render_mqtt_content(tab):
 def render_shopping_content(tab):
     if tab == 'shopping-overview-tab':
         layout = dcc.Loading(id="loading-2", color=COLORS['foreground'], children=[
-                layout_shopping_overview()
-            ], type="default")
+            layout_shopping_overview()
+        ], type="default")
     elif tab == 'shopping-add-tab':
         layout = layout_shopping_add()
     return layout
 
 
-@APP.callback(Output('current-data-headers', 'children'),
+"""@APP.callback(Output('current-data-headers', 'children'),
               [Input('data-overview-update', 'n_intervals'),
                Input('data-overview-values', 'value')])
 def update_current_data_headers(interval, overview_values):
@@ -1055,7 +1120,7 @@ def update_current_data_headers(interval, overview_values):
             className=DIV_COLUMNS[len(overview_values)],
         ) for value in overview_values
     ]
-
+"""
 
 @APP.callback(Output('current-data', 'children'),
               [Input('data-overview-update', 'n_intervals'),
@@ -1076,27 +1141,23 @@ def update_current_data(interval, overview_values):
         gauges.append(
             html.Div(
                 children=[
-                    html.Div(
-                        children=[
-                            daq.Gauge(
-                                id="current-temp-gauge",
-                                value=last,
-                                min=min_val,
-                                max=max_val,
-                                showCurrentValue=True,
-                                units=unit,
-                                # scale={'start': min_val, 'interval': 1, 'labelInterval': 2},
-                                color={
-                                    "gradient": True,
-                                    "ranges": {
-                                        "blue": [min_val, min_val + step],
-                                        "green": [min_val + step, max_val - step],
-                                        "red": [max_val - step, max_val]
-                                    }
-                                },
-                            )
-                        ],
-                        className="gauge",
+                    daq.Gauge(
+                        id="current-temp-gauge",
+                        label=value.capitalize(),
+                        size=150,
+                        value=last,
+                        min=min_val,
+                        max=max_val,
+                        showCurrentValue=True,
+                        units=unit,
+                        color={
+                            "gradient": True,
+                            "ranges": {
+                                "blue": [min_val, min_val + step],
+                                "green": [min_val + step, max_val - step],
+                                "red": [max_val - step, max_val]
+                            }
+                        },
                     )
                 ],
                 className=DIV_COLUMNS[len(overview_values)],
@@ -1349,50 +1410,81 @@ def disk_state(interval):
     [Input("loading-shopping-overview-graph", 'loading_state')]
 )
 def get_shopping_monthly_overview(state):
-    now = datetime.now()
-    today = datetime(now.year, now.month, now.day)
-    dates_start = list(rrule(MONTHLY, bymonthday=(1,), dtstart=today-relativedelta(months=+6), until=datetime.now()))
-    dates_end = list(rrule(MONTHLY, bymonthday=(-1,), dtstart=today-relativedelta(months=+5), until=datetime.now()))
-    this_month = datetime(now.year, now.month, 1)
+    six_months_ago = datetime.now()-relativedelta(months=6)
+    six_months_ago = datetime(six_months_ago.year, six_months_ago.month, 1)
+
+    data = sql_data.get_shopping_expenses_by_date(six_months_ago)
+    curr_month = data.Date.dt.month.unique()[-1]
+    unique_months = data.Date.dt.month.unique()
+
+    max_min = list(
+        zip(
+            *[
+                (x.Payment.cumsum().max(), x.Payment.cumsum().min())
+                for _, x in data[data.Date.dt.month != curr_month].set_index('Date').groupby(lambda x: x.month)
+            ]
+        )
+    )
+
+    y1_max, y1_min = max(max_min[0]), min(max_min[1])
+    y2_min, y2_max = (
+        data[data.Date.dt.month == curr_month].Payment.min(),
+        data[data.Date.dt.month == curr_month].Payment.max(),
+    )
+    y1_range_min, y1_range_max, y1_dtick, y2_range_min, y2_range_max, y2_dtick = graph_helper.calculate_ticks(
+        y1_min, y1_max, y2_min, y2_max
+    )
 
     fig = make_subplots(specs=[[{"secondary_y": True}]])
-    for start, end in zip(dates_start, dates_end):
-        data = sql_data.get_shopping_expenses_by_date(start, end)
-        fig.add_trace(
-            go.Scatter(
-                mode='lines',
-                hovertemplate='%{y:.2f}€',
-                x=data.Date.dt.day,
-                y=data.Payment.cumsum(),
-                name=data.Date.iloc[0].month_name(),
-                yaxis='y2',
-            ),
-            secondary_y=False,
-        )
-    data = sql_data.get_shopping_expenses_by_date(this_month)
-    fig.add_trace(
-        go.Scatter(
+
+    for month in unique_months:
+        months_data = pd.DataFrame({
+            'Days': data[data.Date.dt.month == month].Date.dt.day,
+            'Payment': data[data.Date.dt.month == month].Payment.cumsum()
+        })
+        months_data.loc[-1] = 0
+        months_data.index = months_data.index + 1
+        months_data = months_data.sort_index()
+        if months_data.Days.iloc[-1] != 31 and (month != unique_months[-1] or month != datetime.now().month):
+            months_data = months_data.append(
+                {'Days': 31, 'Payment': np.interp([31], months_data.Days, months_data.Payment)[0]},
+                ignore_index=True
+            )
+
+        trace = go.Scatter(
             mode='lines',
             hovertemplate='%{y:.2f}€',
-            x=data.Date.dt.day,
-            y=data.Payment.cumsum(),
-            name=data.Date.iloc[0].month_name()
-        ),
-        secondary_y=False,
-    )
-    fig.add_trace(
-        go.Bar(
-            opacity=0.5,
-            hovertemplate='%{y:.2f}€',
-            x=data.Date.dt.day,
-            y=data.Payment,
-            name=data.Date.iloc[0].month_name()
-        ),
-        secondary_y=True,
-    )
+            x=months_data.Days,
+            y=months_data.Payment,
+            name=month_name[month],
+            yaxis='y2',
+        )
+
+        if month == unique_months[-1]:
+            trace.line = {'color': COLORS['foreground']}
+
+        fig.add_trace(
+            trace,
+            secondary_y=True,
+        )
+        if month == unique_months[-1]:
+            fig.add_trace(
+                go.Bar(
+                    opacity=0.5,
+                    hovertemplate='%{y:.2f}€',
+                    x=data[data.Date.dt.month == month].Date.dt.day,
+                    y=data[data.Date.dt.month == month].Payment,
+                    name=month_name[month],
+                    marker={
+                        'color': COLORS['foreground'],
+                    },
+                ),
+                secondary_y=False,
+            )
+
     fig.update_layout({
         'autosize': True,
-        'barmode': 'stack',
+        'barmode': 'overlay',
         'coloraxis': {
             'colorbar': {
                 'outlinewidth': 0,
@@ -1401,6 +1493,68 @@ def get_shopping_monthly_overview(state):
             },
         },
         'colorway': COLORS['colorway'],
+        'dragmode': False,
+        'font': {
+            'color': COLORS['foreground'],
+        },
+        'legend': {
+            'orientation': 'h',
+        },
+        'margin': {
+            'l': 10, 'r': 10, 't': 10, 'b': 10, 'pad': 0,
+        },
+        'paper_bgcolor': COLORS['background'],
+        'plot_bgcolor': COLORS['background'],
+        'xaxis': {
+            'fixedrange': True, 'rangemode': 'tozero',
+            'showline': True, 'linewidth': 1, 'linecolor': COLORS['border-medium'],
+            'showgrid': True, 'gridwidth': 1, 'gridcolor': COLORS['border-medium'],
+            'zeroline': True, 'zerolinewidth': 1, 'zerolinecolor': COLORS['border-medium'],
+        },
+        'yaxis': {
+            'side': 'right',
+            'range': [y2_range_min, y2_range_max],
+            'dtick': y2_dtick,
+            'fixedrange': True, 'rangemode': 'tozero',
+            'showline': True, 'linewidth': 1, 'linecolor': COLORS['border-medium'],
+            'showgrid': True, 'gridwidth': 1, 'gridcolor': COLORS['border-medium'],
+            'zeroline': True, 'zerolinewidth': 1, 'zerolinecolor': COLORS['border-medium'],
+        },
+        'yaxis2': {
+            'side': 'left',
+            'range': [y1_range_min, y1_range_max],
+            'dtick': y1_dtick,
+            'overlaying': 'y',
+            'fixedrange': True, 'rangemode': 'tozero',
+            'showline': True, 'linewidth': 1, 'linecolor': COLORS['border-medium'],
+            'showgrid': True, 'gridwidth': 1, 'gridcolor': COLORS['border-medium'],
+            'zeroline': True, 'zerolinewidth': 1, 'zerolinecolor': COLORS['border-medium'],
+        },
+    })
+    return fig
+
+
+@APP.callback(
+    Output('shopping-expenses-type-graph', 'figure'),
+    [Input('loading-shopping-expenses-type-graph', 'loading_state')]
+)
+def get_shopping_expenses_type_overview(state):
+    # this_month = datetime(datetime.now().year, datetime.now().month, 1)
+    # expenses_this_month = sql_data.get_shopping_expenses_by_date(this_month)
+    fig = go.Figure()
+
+    fig.update_layout({
+        'autosize': True,
+        'barmode': 'overlay',
+        'coloraxis': {
+            'colorbar': {
+                'outlinewidth': 0,
+                'bordercolor': COLORS['background'],
+                'bgcolor': COLORS['background'],
+            },
+        },
+        'colorway': COLORS['colorway'],
+        'dragmode': False,
         'font': {
             'color': COLORS['foreground'],
         },
@@ -1424,7 +1578,47 @@ def get_shopping_monthly_overview(state):
             'showgrid': True, 'gridwidth': 1, 'gridcolor': COLORS['border-medium'],
             'zeroline': True, 'zerolinewidth': 1, 'zerolinecolor': COLORS['border-medium'],
         },
-        'yaxis2': {
+    })
+    return fig
+
+
+@APP.callback(
+    Output('shopping-nutrition-type-graph', 'figure'),
+    [Input('loading-shopping-nutrition-type-graph', 'loading_state')]
+)
+def get_shopping_nutrition_type_graph(state):
+    fig = go.Figure()
+
+    fig.update_layout({
+        'autosize': True,
+        'barmode': 'overlay',
+        'coloraxis': {
+            'colorbar': {
+                'outlinewidth': 0,
+                'bordercolor': COLORS['background'],
+                'bgcolor': COLORS['background'],
+            },
+        },
+        'colorway': COLORS['colorway'],
+        'dragmode': False,
+        'font': {
+            'color': COLORS['foreground'],
+        },
+        'legend': {
+            'orientation': 'h',
+        },
+        'margin': {
+            'l': 10, 'r': 10, 't': 10, 'b': 10, 'pad': 0,
+        },
+        'paper_bgcolor': COLORS['background'],
+        'plot_bgcolor': COLORS['background'],
+        'xaxis': {
+            'fixedrange': True, 'rangemode': 'tozero',
+            'showline': True, 'linewidth': 1, 'linecolor': COLORS['border-medium'],
+            'showgrid': True, 'gridwidth': 1, 'gridcolor': COLORS['border-medium'],
+            'zeroline': True, 'zerolinewidth': 1, 'zerolinecolor': COLORS['border-medium'],
+        },
+        'yaxis': {
             'fixedrange': True, 'rangemode': 'tozero',
             'showline': True, 'linewidth': 1, 'linecolor': COLORS['border-medium'],
             'showgrid': True, 'gridwidth': 1, 'gridcolor': COLORS['border-medium'],
@@ -1447,7 +1641,7 @@ def get_shopping_total_overview(state):
     for shop in shops.Shop:
         expense = sql_data.get_shopping_expenses_per_shop(shop)
         df_days = df_days.join(expense)
-        data.append(go.Bar(
+        bar = go.Bar(
             name=shop,
             x=df_days.index,
             y=df_days[shop],
@@ -1458,7 +1652,18 @@ def get_shopping_total_overview(state):
                     'color': COLORS['background'],
                 }
             }
-        ))
+        )
+
+        if shop.lower() == 'rewe':
+            bar.marker['color'] = COLORS['colorway'][0]
+        elif shop.lower() == 'aldi':
+            bar.marker['color'] = COLORS['colorway'][1]
+        elif shop.lower() == 'amazon':
+            bar.marker['color'] = COLORS['colorway'][2]
+        elif shop.lower() == 'bike24':
+            bar.marker['color'] = COLORS['foreground']
+
+        data.append(bar)
 
     fig = go.Figure(
         data=data,
@@ -1472,7 +1677,7 @@ def get_shopping_total_overview(state):
                     'bgcolor': COLORS['background'],
                 },
             },
-            'colorway': COLORS['colorway'],
+            'colorway': COLORS['colorway'][3:],
             'font': {
                 'color': COLORS['foreground'],
             },
@@ -1485,18 +1690,18 @@ def get_shopping_total_overview(state):
             'paper_bgcolor': COLORS['background'],
             'plot_bgcolor': COLORS['background'],
             'xaxis': {
-                'fixedrange': True, 'rangemode': 'tozero',
+                'type': 'date',
+                'range': [datetime(datetime.now().year-1, datetime.now().month, datetime.now().day), datetime.now()],
                 'showline': True, 'linewidth': 1, 'linecolor': COLORS['border-medium'],
                 'showgrid': True, 'gridwidth': 1, 'gridcolor': COLORS['border-medium'],
                 'zeroline': True, 'zerolinewidth': 1, 'zerolinecolor': COLORS['border-medium'],
             },
             'yaxis': {
-                'fixedrange': True, 'rangemode': 'tozero',
                 'showline': True, 'linewidth': 1, 'linecolor': COLORS['border-medium'],
                 'showgrid': True, 'gridwidth': 1, 'gridcolor': COLORS['border-medium'],
                 'zeroline': True, 'zerolinewidth': 1, 'zerolinecolor': COLORS['border-medium'],
             },
-        },
+        }
     )
     return fig
 
