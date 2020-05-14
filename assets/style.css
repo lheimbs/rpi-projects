@@ -18,9 +18,9 @@ div {
 
 .app__container {
     margin-top: 0%;
-    margin-left: 5%;
-    margin-right: 5%;
-    margin-bottom: 3%;
+    margin-left: 2%;
+    margin-right: 2%;
+    margin-bottom: 0%;
 
     border: 0px solid var(--border-dark);
     /*margin: 3% 5%;*/

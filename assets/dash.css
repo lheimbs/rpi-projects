@@ -73,26 +73,30 @@ Checklist padding
 
 /*
 Gauge
-*/
+
 .gauge {
     padding: 10px 0;
     text-align: center;
 }
-
+*/
 /*
 Gauge height
-*/
+
 .sc-iwsKbI {
     padding: 0px;
     height: 220px;
 }
-
+*/
 
 /*
 Gauge current font size
 */
 .jjZFEi {
-    font-size: 1.7em;
+    font-size: 1.3em;
+}
+
+label.sc-bwzfXH {
+    font-size: 1.35em;
 }
 
 /*

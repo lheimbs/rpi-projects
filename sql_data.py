@@ -6,7 +6,7 @@ import pandas as pd
 import logging
 from datetime import datetime, timedelta
 
-DATABASE = '/home/pi/projects/rpi-projects/data.db'
+DATABASE = 'data.db'
 TABLE = 'room-data'
 DATETIME = 'datetime'
 TEMPERATURE = 'temperature'
@@ -59,10 +59,9 @@ def get_last_value(value_type):
     last_val = LAST_VAL
     with sqlite3.connect(DATABASE) as connection:
         cursor = connection.cursor()
-        logger.info(
-            f"Query database for newest value of column '{value_type}' from table 'room-data', " +
-            "ordered by column 'datetime'."
-        )
+        logger.info(f"Query database for newest value of column '{value_type}' "
+                    + "from table 'room-data', "
+                    + "ordered by column 'datetime'.")
         last_val = cursor.execute(
             f"SELECT {value_type} FROM 'room-data' ORDER BY datetime DESC LIMIT 1"
         ).fetchone()[0]
