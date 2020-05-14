@@ -15,7 +15,6 @@ import plotly.graph_objects as go
 import dash_bootstrap_components as dbc
 
 from math import ceil
-from copy import deepcopy
 from collections import deque
 from datetime import datetime
 from dateutil.relativedelta import relativedelta
@@ -1364,7 +1363,7 @@ def get_shopping_monthly_overview(state):
                 hovertemplate='%{y:.2f}€',
                 x=data.Date.dt.day,
                 y=data.Payment.cumsum(),
-                name=data.Date.iloc[0].month_name(),
+                name=datetime.now().strftime("%B") if data.empty else data.Date.iloc[0].month_name(),
                 yaxis='y2',
             ),
             secondary_y=False,
@@ -1376,7 +1375,7 @@ def get_shopping_monthly_overview(state):
             hovertemplate='%{y:.2f}€',
             x=data.Date.dt.day,
             y=data.Payment.cumsum(),
-            name=data.Date.iloc[0].month_name()
+            name=datetime.now().strftime("%B") if data.empty else data.Date.iloc[0].month_name(),
         ),
         secondary_y=False,
     )
@@ -1386,7 +1385,7 @@ def get_shopping_monthly_overview(state):
             hovertemplate='%{y:.2f}€',
             x=data.Date.dt.day,
             y=data.Payment,
-            name=data.Date.iloc[0].month_name()
+            name=datetime.now().strftime("%B") if data.empty else data.Date.iloc[0].month_name(),
         ),
         secondary_y=True,
     )
@@ -1485,13 +1484,13 @@ def get_shopping_total_overview(state):
             'paper_bgcolor': COLORS['background'],
             'plot_bgcolor': COLORS['background'],
             'xaxis': {
-                'fixedrange': True, 'rangemode': 'tozero',
+                #'fixedrange': True, 'rangemode': 'tozero',
                 'showline': True, 'linewidth': 1, 'linecolor': COLORS['border-medium'],
                 'showgrid': True, 'gridwidth': 1, 'gridcolor': COLORS['border-medium'],
                 'zeroline': True, 'zerolinewidth': 1, 'zerolinecolor': COLORS['border-medium'],
             },
             'yaxis': {
-                'fixedrange': True, 'rangemode': 'tozero',
+                #'fixedrange': True, 'rangemode': 'tozero',
                 'showline': True, 'linewidth': 1, 'linecolor': COLORS['border-medium'],
                 'showgrid': True, 'gridwidth': 1, 'gridcolor': COLORS['border-medium'],
                 'zeroline': True, 'zerolinewidth': 1, 'zerolinecolor': COLORS['border-medium'],
