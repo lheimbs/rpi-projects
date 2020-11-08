@@ -1744,7 +1744,7 @@ def get_shopping_products(data):
      Input({'type': 'shopping-remove-item', 'id': ALL}, 'n_clicks')],
     [State('shopping-add-items-list', 'children')]
 )
-def shopping_manage_items(n_clicks, indexes, old_shopping_add_list):
+def manage_shopping_items(n_clicks, indexes, old_shopping_add_list):
     logger.info(f"Update Shopping items list called.")
     logger.info(f"      Indexes: {indexes}.")
 

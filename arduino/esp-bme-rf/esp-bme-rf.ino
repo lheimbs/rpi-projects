@@ -8,7 +8,7 @@
 */
 
 #include <ESP8266WiFi.h>
-#include <PubSubClient.h> 
+#include <PubSubClient.h>
 #include <RCSwitch.h>
 #include <Adafruit_Sensor.h>
 #include <Adafruit_BME280.h>
@@ -23,7 +23,7 @@ RCSwitch transmitter = RCSwitch();
 
 Adafruit_BME280 bme;
 
-const char* ssid = "022696";
+const char* ssid = "FRITZ!Box 6591 Cable PF";
 const char* password = TODO;
 const char* mqtt_broker = "lennyspi.local";
 const int mqtt_broker_port = 8883;
@@ -67,6 +67,7 @@ void setup_wifi() {
     Serial.println("WiFi connected");
     Serial.print("IP address: ");
     Serial.println(WiFi.localIP());
+    digitalWrite(LED_BUILTIN, HIGH);
 }
 
 
@@ -94,9 +95,9 @@ void setup_mqtt() {
               delay(1000);
               digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
             }
-            digitalWrite(LED_BUILTIN, LOW);
         }
     }
+    digitalWrite(LED_BUILTIN, HIGH);
 }
 
 /*
@@ -142,6 +143,10 @@ void setup() {
 
 
 void loop() {
+    if (WiFi.status() != WL_CONNECTED) {
+        setup_wifi();
+        setup_mqtt();
+    }
     if (!client.connected()) {
         setup_mqtt();
     }

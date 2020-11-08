@@ -9,9 +9,11 @@ void setup() {
     pinMode(INTERNAL_LED, OUTPUT);
     pinMode(EXTERNAL_LED, OUTPUT);
 
+    digitalWrite(EXTERNAL_LED,HIGH);
     digitalWrite(INTERNAL_LED, HIGH);
-    delay(500);
+    delay(1000);
     digitalWrite(INTERNAL_LED, LOW);
+    digitalWrite(EXTERNAL_LED,LOW);
     delay(500);
 }
 
