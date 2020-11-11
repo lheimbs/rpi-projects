@@ -14,7 +14,7 @@ CODES = {
     2: {"name": "tablet", "on": 1134929, "off": 1134932},
     3: {"name": "rpi",  "on": 1135697, "off": 1135700},
     4: {"name": "sensor",  "on": 1135889, "off": 1135892},
-    5: {"name": "other",  "on": 1135697, "off": 1135700},
+    5: {"name": "other",  "on": 1135937, "off": 1135940},
 }
 SEND_PATH = "/home/pi/utils/433Utils/RPi_utils/send"
 
