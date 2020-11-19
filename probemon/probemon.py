@@ -1,9 +1,7 @@
-#!/usr/bin/env python3
-# -*- coding: utf-8 -*-
 
 from logging.handlers import RotatingFileHandler
 from pprint import pprint
-from scapy.all import *
+from scapy.all import sniff
 import argparse
 import time
 from datetime import datetime
@@ -15,17 +13,16 @@ import paho.mqtt.client as mqtt
 import json
 import struct
 import logging
+
+from mac_vendor import get_mac_vendor
 logging.getLogger("scapy.runtime").setLevel(logging.ERROR)
 
-
-NAME = 'probemon'
+logging.basicConfig(format='File "%(pathname)-75s", line %(lineno)-3d, in %(funcName)-20s: %(levelname)-8s : %(message)s', level=logging.INFO)
+logger = logging.getLogger()
 DESCRIPTION = "a command line tool for logging 802.11 probe request frames"
 
 client = mqtt.Client()
 sensor_data = {'macaddress': "", 'time': "", 'make': "", 'ssid': "", 'rssi': 0}
-
-DEBUG = False
-
 
 def parse_rssi(packet):
     # parse dbm_antsignal from radiotap header
@@ -61,63 +58,27 @@ def parse_rssi(packet):
     return dbm_antsignal
 
 
-def build_packet_callback(time_fmt, logger, delimiter, mac_info, ssid, rssi, mqtt_topic):
+def build_packet_callback(logger, mqtt_topic):
     def packet_callback(packet):
-
-        global sensor_data
-        global client
 
         # we are looking for management frames with a probe subtype
         # if neither match we are done here
         if packet.type != 0 or packet.subtype != 0x04 or packet.type is None:
             return
 
-        # list of output fields
-        fields = []
-
-        # determine preferred time format
-        log_time = str(int(time.time()))
-        if time_fmt == 'iso':
-            log_time = datetime.now().isoformat()
-
-        fields.append(log_time)
-
-        # append the mac address itself
-        fields.append(packet.addr2)
-
-        # parse mac address and look up the organization from the vendor octets
-        if mac_info:
-            try:
-                parsed_mac = netaddr.EUI(packet.addr2)
-                mac_make = parsed_mac.oui.registration().org
-            except netaddr.core.NotRegisteredError as e:
-                mac_make = 'UNKNOWN'
-            fields.append(mac_make)
-
-        # include the SSID in the probe frame
-        if ssid:
-            fields.append(packet.info.decode(encoding='utf-8', errors='replace'))
-
-        if rssi:
-            if sys.version_info > (3,):
-                rssi_val = parse_rssi(memoryview(bytes(packet)))
-            else:
-                rssi_val = parse_rssi(buffer(str(packet)))
-
-            fields.append(str(rssi_val))
+        if sys.version_info > (3,):
+            rssi_val = parse_rssi(memoryview(bytes(packet)))
         else:
-            rssi_val = 0
+            rssi_val = parse_rssi(buffer(str(packet)))
 
         sensor_data['macaddress'] = packet.addr2
-        sensor_data['time'] = log_time
-        sensor_data['make'] = mac_make
+        sensor_data['time'] = datetime.now().isoformat()
         sensor_data['ssid'] = packet.info.decode(encoding='utf-8', errors='replace')
-        sensor_data['uppercaseSSID'] = packet.info.decode(encoding='utf-8', errors='replace').upper()
         sensor_data['rssi'] = rssi_val
 
-        logger.info(delimiter.join(fields))
-
-        client.publish(mqtt_topic, json.dumps(sensor_data), 1)
+        logger.info(sensor_data)
+        if client.is_connected():
+            client.publish(mqtt_topic, json.dumps(sensor_data), 1)
     return packet_callback
 
 
@@ -126,24 +87,6 @@ def main():
 
     parser = argparse.ArgumentParser(description=DESCRIPTION)
     parser.add_argument('-i', '--interface', help="capture interface")
-    parser.add_argument('-t', '--time', default='iso',
-                        help="output time format (unix, iso)")
-    parser.add_argument('-b', '--max-bytes', default=5000000,
-                        help="maximum log size in bytes before rotating")
-    parser.add_argument('-c', '--max-backups', default=99999,
-                        help="maximum number of log files to keep")
-    parser.add_argument('-d', '--delimiter', default='\t',
-                        help="output field delimiter")
-    parser.add_argument('-f', '--mac-info', action='store_true',
-                        help="include MAC address manufacturer")
-    parser.add_argument('-s', '--ssid', action='store_true',
-                        help="include probe SSID in output")
-    parser.add_argument('-r', '--rssi', action='store_true',
-                        help="include rssi in output")
-    parser.add_argument('-D', '--debug', action='store_true',
-                        help="enable debug output")
-    parser.add_argument('-l', '--log', action='store_true',
-                        help="enable scrolling live view of the logfile")
     parser.add_argument('-x', '--mqtt-broker', default='',
                         help="mqtt broker server")
     parser.add_argument('-o', '--mqtt-port', default='1883',
@@ -153,44 +96,25 @@ def main():
                         default='', help="mqtt password")
     parser.add_argument('-m', '--mqtt-topic',
                         default='probemon/request', help="mqtt topic")
-    parser.add_argument('-P', '--pid', default='', help="PID File")
     args = parser.parse_args()
 
     if not args.interface:
-        print("error: capture interface not given, try --help")
+        logger.error("capture interface not given, try --help")
         sys.exit(-1)
 
-    DEBUG = args.debug
+    logger.info("Started...")
 
-    # PID speichern
-    if args.pid:
-        if os.path.isfile(args.pid):
-            print("%s already exists, exiting" % args.pid)
-            sys.exit()
+    if args.mqtt_user and args.mqtt_password:
+        logger.info(f"Set mqtt username to {args.mqtt_user} and set mqtt password.")
+        client.username_pw_set(args.mqtt_user, args.mqtt_password)
 
-        pid = str(os.getpid())
-        open(args.pid, 'w').write(pid)
+    if args.mqtt_broker:
+        logger.info(f"Connect to mqtt broker {args.mqtt_broker} on port {int(args.mqtt_port)}.")
+        client.connect(args.mqtt_broker, int(args.mqtt_port), 1)
+        client.loop_start()
 
-    try:
-        if args.mqtt_user and args.mqtt_password:
-            client.username_pw_set(args.mqtt_user, args.mqtt_password)
-
-        if args.mqtt_broker:
-            client.connect(args.mqtt_broker, int(args.mqtt_port), 1)
-            client.loop_start()
-
-        # setup our rotating logger
-        logger = logging.getLogger(NAME)
-        logger.setLevel(logging.INFO)
-        if args.log:
-            logger.addHandler(logging.StreamHandler(sys.stdout))
-        built_packet_cb = build_packet_callback(args.time, logger,
-                                                args.delimiter, args.mac_info, args.ssid, args.rssi, args.mqtt_topic)
-        sniff(iface=args.interface, prn=built_packet_cb, store=0, monitor=True)
-    finally:
-        # Remove PID File on Exit
-        if args.pid:
-            os.unlink(args.pid)
+    built_packet_cb = build_packet_callback(logger, args.mqtt_topic)
+    sniff(iface=args.interface, prn=built_packet_cb, store=0, monitor=True)
 
 
 if __name__ == '__main__':
