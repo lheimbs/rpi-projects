@@ -23,7 +23,7 @@ RCSwitch transmitter = RCSwitch();
 
 Adafruit_BME280 bme;
 
-const char* ssid = "FRITZ!Box 6591 Cable PF";
+const char* ssid = "No Internet Access";
 const char* password = TODO;
 const char* mqtt_broker = "lennyspi.local";
 const int mqtt_broker_port = 8883;
@@ -31,7 +31,7 @@ const int mqtt_broker_port = 8883;
 const char* mqtt_status_topic = "mqtt/esp_bme_rf/status";
 const char* mqtt_bme_topic = "room/data";
 const char* mqtt_recieve_topic = "room/data/rf/recieve";
-const char* mqtt_transmit_topic = "mqtt/esp_bme_rf/transmit";
+const char* mqtt_transmit_topic = "room/data/rf/transmit";
 
 String rf_data;
 String bme_data;
@@ -79,10 +79,8 @@ void setup_mqtt() {
         String clientId = "Esp-bme-rf-";
         clientId += String(random(0xffff), HEX);
         // Attempt to connect
-        if (client.connect(clientId.c_str(), mqtt_status_topic, 0, true, "offline")) {
+        if (client.connect(clientId.c_str(), mqtt_status_topic, 0, false, "offline")) {
             Serial.println("connected");
-            // Once connected, publish an announcement...
-            client.publish(mqtt_status_topic, "online", true);
             // ... and resubscribe
             client.subscribe(mqtt_transmit_topic);
             
@@ -95,8 +93,16 @@ void setup_mqtt() {
               delay(1000);
               digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
             }
+            delay(100);
+            digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+            delay(100);
+            digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+            delay(100);
+            digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
         }
     }
+    // Once connected, publish an announcement...
+    client.publish(mqtt_status_topic, "online", false);
     digitalWrite(LED_BUILTIN, HIGH);
 }
 
@@ -147,10 +153,9 @@ void loop() {
         setup_wifi();
         setup_mqtt();
     }
-    if (!client.connected()) {
+    if (!client.loop()) {
         setup_mqtt();
     }
-    client.loop();
 
     if (reciever.available()) {
         output(
