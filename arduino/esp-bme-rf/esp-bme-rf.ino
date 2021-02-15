@@ -25,7 +25,7 @@ Adafruit_BME280 bme;
 
 const char* ssid = "No Internet Access";
 const char* password = TODO;
-const char* mqtt_broker = "lennyspi.local";
+const char* mqtt_broker = "blue";
 const int mqtt_broker_port = 8883;
 
 const char* mqtt_status_topic = "mqtt/esp_bme_rf/status";
