@@ -25,7 +25,8 @@ Adafruit_BME280 bme;
 
 const char* ssid = "No Internet Access";
 const char* password = TODO;
-const char* mqtt_broker = "blue";
+const char* mqtt_broker = "192.168.178.202";
+const char* mqtt_broker_wifi = "192.168.178.203";
 const int mqtt_broker_port = 8883;
 
 const char* mqtt_status_topic = "mqtt/esp_bme_rf/status";
@@ -73,8 +74,16 @@ void setup_wifi() {
 
 void setup_mqtt() {
     // Loop until we're reconnected
+    bool wlan_client = false;
     while (!client.connected()) {
-        Serial.print("Attempting MQTT connection...");
+        Serial.print("Attempting MQTT connection to host ");
+        if (wlan_client == true) {
+            Serial.print(mqtt_broker_wifi);
+        }
+        else {
+            Serial.print(mqtt_broker);
+        }
+        Serial.print("...");
         // Create a random client ID
         String clientId = "Esp-bme-rf-";
         clientId += String(random(0xffff), HEX);
@@ -85,6 +94,14 @@ void setup_mqtt() {
             client.subscribe(mqtt_transmit_topic);
             
         } else {
+            if (wlan_client == true) {
+                client.setServer(mqtt_broker_wifi, mqtt_broker_port);
+                wlan_client = false;
+            }
+            else {
+                client.setServer(mqtt_broker, mqtt_broker_port);
+                wlan_client = true;
+            }
             Serial.print("failed, rc=");
             Serial.print(client.state());
             Serial.println(" try again in 5 seconds");
@@ -94,11 +111,12 @@ void setup_mqtt() {
               digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
             }
             delay(100);
-            digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-            delay(100);
-            digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
-            delay(100);
-            digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+            // digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+            // delay(100);
+            // digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+            // delay(100);
+            // digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+
         }
     }
     // Once connected, publish an announcement...
