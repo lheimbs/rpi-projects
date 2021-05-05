@@ -23,15 +23,16 @@ RCSwitch transmitter = RCSwitch();
 
 Adafruit_BME280 bme;
 
-const char* ssid = "FRITZ!Box 6591 Cable PF";
+const char* ssid = "No Internet Access";
 const char* password = TODO;
-const char* mqtt_broker = "lennyspi.local";
+const char* mqtt_broker = "192.168.178.202";
+const char* mqtt_broker_wifi = "192.168.178.203";
 const int mqtt_broker_port = 8883;
 
 const char* mqtt_status_topic = "mqtt/esp_bme_rf/status";
 const char* mqtt_bme_topic = "room/data";
 const char* mqtt_recieve_topic = "room/data/rf/recieve";
-const char* mqtt_transmit_topic = "mqtt/esp_bme_rf/transmit";
+const char* mqtt_transmit_topic = "room/data/rf/transmit";
 
 String rf_data;
 String bme_data;
@@ -73,20 +74,34 @@ void setup_wifi() {
 
 void setup_mqtt() {
     // Loop until we're reconnected
+    bool wlan_client = false;
     while (!client.connected()) {
-        Serial.print("Attempting MQTT connection...");
+        Serial.print("Attempting MQTT connection to host ");
+        if (wlan_client == true) {
+            Serial.print(mqtt_broker_wifi);
+        }
+        else {
+            Serial.print(mqtt_broker);
+        }
+        Serial.print("...");
         // Create a random client ID
         String clientId = "Esp-bme-rf-";
         clientId += String(random(0xffff), HEX);
         // Attempt to connect
-        if (client.connect(clientId.c_str(), mqtt_status_topic, 0, true, "offline")) {
+        if (client.connect(clientId.c_str(), mqtt_status_topic, 0, false, "offline")) {
             Serial.println("connected");
-            // Once connected, publish an announcement...
-            client.publish(mqtt_status_topic, "online", true);
             // ... and resubscribe
             client.subscribe(mqtt_transmit_topic);
             
         } else {
+            if (wlan_client == true) {
+                client.setServer(mqtt_broker_wifi, mqtt_broker_port);
+                wlan_client = false;
+            }
+            else {
+                client.setServer(mqtt_broker, mqtt_broker_port);
+                wlan_client = true;
+            }
             Serial.print("failed, rc=");
             Serial.print(client.state());
             Serial.println(" try again in 5 seconds");
@@ -95,8 +110,17 @@ void setup_mqtt() {
               delay(1000);
               digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
             }
+            delay(100);
+            // digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+            // delay(100);
+            // digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+            // delay(100);
+            // digitalWrite(LED_BUILTIN, !digitalRead(LED_BUILTIN));
+
         }
     }
+    // Once connected, publish an announcement...
+    client.publish(mqtt_status_topic, "online", false);
     digitalWrite(LED_BUILTIN, HIGH);
 }
 
@@ -147,10 +171,9 @@ void loop() {
         setup_wifi();
         setup_mqtt();
     }
-    if (!client.connected()) {
+    if (!client.loop()) {
         setup_mqtt();
     }
-    client.loop();
 
     if (reciever.available()) {
         output(
