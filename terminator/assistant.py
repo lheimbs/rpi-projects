@@ -246,7 +246,9 @@ def main():
         model_path = args.model
     else:
         logger.warning(
-            "Please supply a valid model path or download the model from https://github.com/alphacep/vosk-api/blob/master/doc/models.md, unpack it and supply the folder path."
+            "Please supply a valid model path or download the model "
+            "from https://github.com/alphacep/vosk-api/blob/master/doc/models.md, "
+            "unpack it and supply the folder path."
         )
         sys.exit(1)
 
