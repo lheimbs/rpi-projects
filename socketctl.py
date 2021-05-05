@@ -18,16 +18,39 @@ CODES = {
     4: {"name": "tablet", "on": 1135889, "off": 1135892},
     5: {"name": "server", "on": 1135937, "off": 1135940},
 }
-CMDS = {'on': '1', 'off': '0'}
+CMDS = {"on": "1", "off": "0"}
 SEND_PATH = "/home/pi/utils/433Utils/RPi_utils/send"
 
 
 def get_args():
     parser = argparse.ArgumentParser(description="Optional Socket Control")
-    parser.add_argument('-d', '--debug', action="store_const", dest="loglevel", const=logging.DEBUG, default=logging.WARNING, help="Enable debugging output. Takes precedence over -v/--verbose.")
-    parser.add_argument('-v', '--verbose', action="store_const", dest="loglevel", const=logging.INFO, help="Increase verbosity.")
-    parser.add_argument('cmd', help="Command for socket. Can be a decimal number or one of [on|off].")
-    parser.add_argument('socket', default=0, type=int, nargs='?', help="Socket number thats being controlled.")
+    parser.add_argument(
+        "-d",
+        "--debug",
+        action="store_const",
+        dest="loglevel",
+        const=logging.DEBUG,
+        default=logging.WARNING,
+        help="Enable debugging output. Takes precedence over -v/--verbose.",
+    )
+    parser.add_argument(
+        "-v",
+        "--verbose",
+        action="store_const",
+        dest="loglevel",
+        const=logging.INFO,
+        help="Increase verbosity.",
+    )
+    parser.add_argument(
+        "cmd", help="Command for socket. Can be a decimal number or one of [on|off]."
+    )
+    parser.add_argument(
+        "socket",
+        default=0,
+        type=int,
+        nargs="?",
+        help="Socket number thats being controlled.",
+    )
     args = parser.parse_args()
 
     logging.basicConfig(level=args.loglevel)
@@ -45,7 +68,9 @@ def socket_command(socketnr: int, cmd: str) -> bool:
         return send_decimal(int(cmd))
 
     if socketnr not in CODES.keys():
-        logger.warning("Bad Socketnumber {}. Use one of {}.".format(socketnr, CODES.keys()))
+        logger.warning(
+            "Bad Socketnumber {}. Use one of {}.".format(socketnr, CODES.keys())
+        )
         return False
 
     logger.info("Send command {} to socket {} using rpi_rf.".format(cmd, socketnr))
@@ -54,7 +79,11 @@ def socket_command(socketnr: int, cmd: str) -> bool:
 
 def send_code(socketnr, code):
     ret_val = True
-    logger.debug("Sending '{}' to socket {} using rpi_rf (code {})".format(code, socketnr, CODES[socketnr][code]))
+    logger.debug(
+        "Sending '{}' to socket {} using rpi_rf (code {})".format(
+            code, socketnr, CODES[socketnr][code]
+        )
+    )
     try:
         rf_device = RFDevice(GPIO_PIN)
         rf_device.enable_tx()
