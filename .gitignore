@@ -10,3 +10,10 @@ credentials.json
 
 # ignore jupyter stuff
 *.ipynb*
+
+# ignore models
+terminator/models/
+# ignore led stuff
+terminator/pixels_demo.py
+terminator/raw_led_stuff.py
+
