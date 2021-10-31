@@ -1,1 +1,2 @@
 *.ino filter=remove-pass
+*.ino filter=remove-ssid
