@@ -24,7 +24,7 @@ RCSwitch transmitter = RCSwitch();
 Adafruit_BME280 bme;
 
 const char* ssid = "TODO";
-const char* password = "2G46LNCCPZPBD879";
+const char* password = "TODO";
 const char* mqtt_broker = "192.168.1.202";
 const char* mqtt_broker_wifi = "192.168.1.203";
 const int mqtt_broker_port = 8883;

@@ -1,2 +1,1 @@
-*.ino filter=remove-pass
-*.ino filter=remove-ssid
+*.ino filter=remove-creds
